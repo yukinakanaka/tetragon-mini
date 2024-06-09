@@ -1,8 +1,10 @@
 #!/bin/bash
 
+# Configuration
+PROJECT_DIR="your directory of tetragon-mini"
+
 # Constants
-LOG_FILE="/opt/oci-hook/call-tetragon.log"
-PROJECT_DIR="/home/yukinakamura.linux/tetragon-mini"
+LOG_FILE="/opt/oci-hook/oci-hook.log"
 GRPC_PORT="10001"
 
 # Logging function
@@ -24,7 +26,7 @@ convert_cgroup_path() {
 }
 
 # Main execution starts here
-log "Start $0 with args: $*"
+log "Start $0"
 
 # Read container context from stdin
 read -r context
@@ -45,7 +47,6 @@ ANNOTATIONS=$(echo "$context" | jq -r '.annotations')
 # Get and parse cgroup path
 BUNDLE=$(echo "$context" | jq -r '.bundle')
 RUN_CONFIG="${BUNDLE}/config.json"
-# RUN_CONFIG="$(pwd)/config.json"
 if [[ ! -f "$RUN_CONFIG" ]]; then
     log "Error: Config file not found: $RUN_CONFIG"
     exit 1

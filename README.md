@@ -45,6 +45,11 @@ If you're using MacOS, you can quickly set it up with lima and my template.
 lima start lima/tetragon-mini.yaml
 ```
 
+### Installing ContainerRuntimeHook
+tetragon-mini does not support dynamic configuration of the ContainerRuntimeHook. Please configure it manually according to your container runtime:
+- CRI-O: Follow the instructions in [OCI Hook in CRI-O](./contrib/tetragon-rthooks/README.md)
+- containerd: Not supported
+
 ### Build and Run
 - Run the next command to generate the necessary Struct codes
 ```

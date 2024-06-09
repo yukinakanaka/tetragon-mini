@@ -1,11 +1,8 @@
 {
     "version": "1.0.0",
     "hook": {
-        "path": "/opt/oci-hook/call-tetragon.sh",
-        "args": [
-            "arg1",
-            "arg2"
-        ]
+        "path": "/opt/oci-hook/oci-hook.sh",
+        "args": []
     },
     "when": {
         "always": true
