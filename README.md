@@ -9,12 +9,14 @@
 - Compared to Tetragon, it has a smaller binary size (because it's written in Rust)
 
 ## Progress
-![](https://geps.dev/progress/10)
+![](https://geps.dev/progress/15)
 ### Done
 - Simple Process Lifecycle Monitoring
 
 ### TODO
--	Add process information for Docker and Kubernetes
+-   Process LifeCycle Monitoring
+    - Support containerd
+    - Cgroup Tracker
 -	Tracing Policies
 -	Add more Tetra commands and options
 -	Support multiple kernel versions
@@ -24,12 +26,13 @@
 ## Process Lifecycle Monitoring
 Tetragon-mini can monitor process lifecycle like bellow:
 ```
-🚀 process      101708: root: /usr/sbin/iptables
-💥 exit         101708: root: /usr/sbin/iptables
-🚀 process      101705: yukinakamura: /usr/bin/cat
-💥 exit         101705: yukinakamura: /usr/bin/cat
-🚀 process      101758: yukinakamura: /usr/bin/sed
-💥 exit         101758: yukinakamura: /usr/bin/sed
+🚀 process      1781470: root: /usr/bin/bash  default/nginx
+💥 exit         1781560: root: /usr/bin/bash  default/nginx
+💥 exit         1781470: root: /usr/bin/bash  default/nginx
+🚀 process      1781659: root: /usr/bin/bash  default/nginx
+💥 exit         1781727: root: /usr/bin/date  default/nginx
+🚀 process      1781740: root: /usr/bin/ls -la default/nginx
+💥 exit         1781740: root: /usr/bin/ls -la default/nginx
 ```
 
 ## How to run
@@ -42,7 +45,7 @@ Tetragon-mini can monitor process lifecycle like bellow:
 ### Set up Lima VM on MacOS
 If you're using MacOS, you can quickly set it up with lima and my template.
 ```
-lima start lima/tetragon-mini.yaml
+lima start lima/tetragon-mini-crio.yaml
 ```
 
 ### Installing ContainerRuntimeHook
