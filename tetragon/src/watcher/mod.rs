@@ -119,6 +119,7 @@ impl PodInformer {
                 };
 
                 running_ids.iter().for_each(|id| {
+                    info!("Adding pod to running cache: {:?}", id);
                     self.running_cache.write().insert(id.clone(), pod.clone());
                 });
 
@@ -189,7 +190,7 @@ impl PodInformer {
                 }
             }
         }
-        debug!("running pods: {:?}", self.running_cache.read().keys());
+        info!("running pods: {:?}", self.running_cache.read().keys());
         debug!("terminated pods: {:?}", self.terminated_cache.read().keys());
     }
 

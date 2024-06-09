@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+mod lib_bpf_cgroup;
 mod lib_data_msg;
 mod lib_helper;
 #[allow(static_mut_refs)]

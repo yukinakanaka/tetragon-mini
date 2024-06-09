@@ -25,14 +25,25 @@ async fn app_main() -> anyhow::Result<()> {
     let (stop_tx, _stop_rx) = tokio::sync::broadcast::channel::<()>(1);
     let (event_tx, event_rx) = tokio::sync::broadcast::channel::<Event>(1);
 
+    let (store, informer) = watcher::pod_informer();
+
     let (mut bpf, _execve_calls_map_guard) = init_ebpf()?;
 
     let execve_map_values = initial_execve_map_valuses()?;
     write_execve_map(&mut bpf, execve_map_values).await?;
 
+    let store_clone = store.clone();
     let ebpf_thread = tokio::spawn({
         let stop = stop_signal(stop_tx.subscribe());
-        async move { run_events(get_process_events_map(&mut bpf)?, event_tx, stop).await }
+        async move {
+            run_events(
+                get_process_events_map(&mut bpf)?,
+                event_tx,
+                stop,
+                store_clone,
+            )
+            .await
+        }
     });
 
     let server = FineGuidanceSensorsService { rx: event_rx };
@@ -40,8 +51,6 @@ async fn app_main() -> anyhow::Result<()> {
         let stop = stop_signal(stop_tx.subscribe());
         async move { server.run(stop).await }
     });
-
-    let (store, informer) = watcher::pod_informer();
 
     let mut pod_event = informer.subscribe();
     let store_clone = store.clone();

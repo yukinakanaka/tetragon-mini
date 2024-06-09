@@ -1,7 +1,10 @@
-use aya_ebpf::helpers::{bpf_get_current_task, bpf_probe_read_kernel};
+use crate::lib_bpf_cgroup::{__tg_get_current_cgroup_id, get_cgroup_name, get_task_cgroup};
+use aya_ebpf::helpers::{
+    bpf_get_current_task, bpf_probe_read_kernel, bpf_probe_read_kernel_str_bytes,
+};
 use tetragon_common::bpf_cred::{MsgCapabilities, MsgCred};
 use tetragon_common::process::{MsgK8s, MsgNs, MsgProcess};
-use tetragon_common::vmlinux::{__u64, cred, kernel_cap_t, task_struct};
+use tetragon_common::vmlinux::*;
 
 use tetragon_common::flags::msg_flags::EVENT_CLONE;
 
@@ -167,11 +170,52 @@ pub unsafe fn get_namespaces(msg: &mut MsgNs, task: *const task_struct) {
 }
 
 #[inline]
-pub unsafe fn __event_get_cgroup_info(_task: *const task_struct, _kube: &mut MsgK8s) {
-    // TODO
+pub unsafe fn __event_get_cgroup_info(task: *const task_struct, kube: &mut MsgK8s) -> __u32 {
+    // Now support only Cgroup v2
+
+    let cgrpfs_magic: __u64 = 0;
+    let subsys_idx: __u32 = 0;
+    // struct cgroup *cgrp;
+    // struct tetragon_conf *conf;
+    let mut flags: __u32 = 0;
+
+    // conf = map_lookup_elem(&tg_conf_map, &zero);
+    // if (conf) {
+    // 	/* Select which cgroup version */
+    // 	cgrpfs_magic = conf->cgrp_fs_magic;
+    // 	subsys_idx = conf->tg_cgrpv1_subsys_idx;
+    // }
+
+    let Some(cgrp) = get_task_cgroup(task, cgrpfs_magic, subsys_idx, &mut flags) else {
+        return 1;
+    };
+
+    // /* Collect event cgroup ID */
+    kube.cgrpid = __tg_get_current_cgroup_id(cgrp, cgrpfs_magic);
+    // if (kube->cgrpid)
+    // 	kube->cgrp_tracker_id = cgrp_get_tracker_id(kube->cgrpid);
+    // else
+    // 	flags |= EVENT_ERROR_CGROUP_ID;
+
+    // /* Get the cgroup name of this event. */
+    // flags |= __event_get_current_cgroup_name(cgrp, kube);
+    __event_get_current_cgroup_name(cgrp, kube);
+    // return flags;
+    return 0;
 }
 
 #[inline]
 pub unsafe fn event_set_clone(pid: &mut MsgProcess) {
     pid.flags = (pid.flags as u64 | EVENT_CLONE) as u32;
+}
+
+/* Gather current task cgroup name */
+#[inline]
+pub unsafe fn __event_get_current_cgroup_name(cgrp: *const cgroup, kube: &mut MsgK8s) -> __u32 {
+    let Some(name) = get_cgroup_name(cgrp) else {
+        return 1;
+    };
+
+    let _ = bpf_probe_read_kernel_str_bytes(name as *const u8, &mut kube.docker_id);
+    return 0;
 }
