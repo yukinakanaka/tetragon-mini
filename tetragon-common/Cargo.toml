@@ -1,0 +1,15 @@
+[package]
+name = "tetragon-common"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+user = ["aya"]
+
+[dependencies]
+aya = { version = "0.13.1", optional = true }
+aya-ebpf = "0.1.1"
+
+[lib]
+path = "src/lib.rs"

@@ -1,0 +1,43 @@
+[package]
+name = "tetragon"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+anyhow = "1.0.86"
+async-stream = "0.3.5"
+aya = "0.13.1"
+aya-log = "0.2.1"
+base64 = "0.22.1"
+bytes = "1.6.0"
+chrono = "0.4.38"
+futures = "0.3.30"
+groups = "0.1.1"
+libc = "0.2.155"
+lru = "0.12.5"
+passwd = "0.0.1"
+procfs = "0.16.0"
+prost = "0.12.6"
+prost-types = "0.12.6"
+rand = "0.8.5"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+tetragon-common = { version = "0.1.0", path = "../tetragon-common", features = ["user"] }
+tokio = { version = "1.38.0", features = ["full"] }
+tokio-stream = "0.1.15"
+tonic = "0.11.0"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+users = "0.11.0"
+
+[[bin]]
+name = "tetragon"
+path = "src/bin/tetragon.rs"
+
+[[bin]]
+name = "tetra"
+path = "src/bin/tetra.rs"
+
+[build-dependencies]
+tonic-build = "0.11.0"

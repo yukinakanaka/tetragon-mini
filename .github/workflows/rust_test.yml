@@ -1,0 +1,44 @@
+name: Rust Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Rustup
+      run: |
+        rustup toolchain add nightly-2024-07-23
+        rustup toolchain install nightly-2024-07-23 --component rust-src
+    - name: Install Protc
+      run: sudo apt install -y protobuf-compiler libprotobuf-dev
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Codegen
+      run: cargo xtask codegen
+    - name: Check formatting
+      run: cargo fmt --all --check
+    # - name: Build test
+    #   run: cargo xtask build --release
+    # - name: Lint with clippy
+    #   run: cargo clippy --all-targets --all-features
+    # - name: Run tests
+    #   run: cargo test --verbose

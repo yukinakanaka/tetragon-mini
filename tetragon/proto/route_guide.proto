@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.example.tetragon";
+option java_outer_classname = "RouteGuideProto";
+
+package tetragon;
+
+import "tetragon.proto";
+
+service RouteGuide {
+  // A simple RPC
+  rpc GetFeature(Point) returns (Feature){};
+
+  // A server-to-client streaming RPC
+  rpc ListFeatures(Rectangle) returns (stream Feature){};
+
+  // A client-to-server streaming RPC
+  rpc RecordRoute(stream Point) returns (RouteSummary){};
+
+  // A Bidirectional streaming RPC
+  rpc RouteChat(stream RouteNote) returns (stream RouteNote){};
+}
+message Point {
+  int32 latitude = 1;
+  int32 longitude = 2;
+}
+
+message Rectangle {
+  Point lo = 1;
+  Point hi = 2;
+}
+
+message Feature {
+  string name = 1;
+  Point location = 2;
+}
+
+message RouteNote {
+  Point location = 1;
+  string message = 2;
+}
+
+message RouteSummary {
+  int32 point_count = 1;
+  int32 feature_count = 2;
+  int32 distance = 3;
+  int32 elapsed_time = 4;
+}
