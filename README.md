@@ -1,14 +1,28 @@
 # Tetragon-mini
-Security Observation Tool written in Rust aya framework inspired by Tetragon.🦀🐝
+- Rewriting [Tetragon](https://github.com/cilium/tetragon) in Rust.🦀
+- Security Observation Tool written in Rust aya framework.🐝
 
 <img src="docs/images/architecture.png" width="600">
 
 ## Why "mini"?
-- Compared to Tetragon, it has a smaller binary size (because it's written in Rust)
 - It has fewer features compared to Tetragon.
+- Compared to Tetragon, it has a smaller binary size (because it's written in Rust)
+
+## Progress
+![](https://geps.dev/progress/5)
+### Done
+- Simple Process Lifecycle Monitoring
+
+### TODO
+-	Add process information for Docker and Kubernetes
+-	Tracing Policies
+-	Add more Tetra commands and options
+-	Support multiple kernel versions
+-	Enable running on Docker, Kubernetes
+-	And more…
 
 ## Process Lifecycle Monitoring
-Now, tetragon-mini can monitor process lifecycle like bellow:
+Tetragon-mini can monitor process lifecycle like bellow:
 ```
 🚀 process      101708: root: /usr/sbin/iptables
 💥 exit         101708: root: /usr/sbin/iptables
