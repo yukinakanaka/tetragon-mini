@@ -28,7 +28,7 @@ provision:
       #!/bin/bash
       set -eux -o pipefail    
       curl -sL https://apt.llvm.org/llvm.sh | bash -s -- 19 all
-      apt update -y
+      apt update
       apt install -y pkg-config libssl-dev
       apt install -y libzstd-dev
 
@@ -47,7 +47,7 @@ provision:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      apt update -y
+      apt update
       apt install -y apt-transport-https ca-certificates curl jq
       apt install -y linux-tools-common linux-tools-$(uname -r)
       apt install -y libelf-dev libcap-dev libpcap-dev libbfd-dev binutils-dev build-essential make
@@ -65,7 +65,7 @@ provision:
       deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
       tee -a /etc/apt/sources.list.d/ddebs.list
       apt install ubuntu-dbgsym-keyring
-      apt update -y
+      apt update
       apt install -y bpftrace-dbgsym
 
   - mode: system
@@ -139,6 +139,40 @@ provision:
       dockerd-rootless-setuptool.sh install
       docker context use rootless
 
+  - mode: system
+    script: |
+      #!/bin/bash
+      [ $(uname -m) = x86_64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      [ $(uname -m) = aarch64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+      chmod +x ./kubectl
+      mv ./kubectl /usr/local/bin/kubectl
+      apt install bash-completion
+      kubectl completion bash > /etc/bash_completion.d/kubectl
+      chmod a+r /etc/bash_completion.d/kubectl
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      echo 'alias k=kubectl' >>~/.bashrc
+      echo 'complete -o default -F __start_kubectl k' >>~/.bashrc
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.26.0/kind-linux-amd64
+      [ $(uname -m) = aarch64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.26.0/kind-linux-arm64
+      chmod +x ./kind
+      mv ./kind /usr/local/bin/kind
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+      apt update
+      apt install -y helm
+
 probes:
   - description: "bpftool to be installed"
     script: |
@@ -150,16 +184,6 @@ probes:
       fi
     hint: See "/var/log/cloud-init-output.log". in the guest
 
-  - description: "aya-tool to be installed"
-    script: |
-      #!/bin/bash
-      set -eux -o pipefail
-      sudo su - $USER
-      if ! timeout 30s bash -c "until command -v aya-tool >/dev/null 2>&1; do sleep 3; done"; then
-        echo >&2 "aya-tool is not installed yet"
-        exit 1
-      fi
-
   - description: "docker to be installed"
     script: |
       #!/bin/bash
@@ -169,3 +193,46 @@ probes:
         exit 1
       fi
     hint: See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "kubectl to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kubectl >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kubectl is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "kind to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kind >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kind is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "helm to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v helm >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "helm is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "aya-tool to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      sudo su - $USER
+      if ! timeout 30s bash -c "until command -v aya-tool >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "aya-tool is not installed yet"
+        exit 1
+      fi
