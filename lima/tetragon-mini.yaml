@@ -120,6 +120,25 @@ provision:
       cargo install bindgen-cli
       cargo install --git https://github.com/aya-rs/aya -- aya-tool
 
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      command -v docker >/dev/null 2>&1 && exit 0
+      export DEBIAN_FRONTEND=noninteractive
+      curl -fsSL https://get.docker.com | sh
+      # NOTE: you may remove the lines below, if you prefer to use rootful docker, not rootless
+      systemctl disable --now docker
+      apt install -y uidmap dbus-user-session
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      systemctl --user start dbus
+      dockerd-rootless-setuptool.sh install
+      docker context use rootless
+
 probes:
   - description: "bpftool to be installed"
     script: |
@@ -140,3 +159,13 @@ probes:
         echo >&2 "aya-tool is not installed yet"
         exit 1
       fi
+
+  - description: "docker to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v docker >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "docker is not installed yet"
+        exit 1
+      fi
+    hint: See "/var/log/cloud-init-output.log". in the guest
