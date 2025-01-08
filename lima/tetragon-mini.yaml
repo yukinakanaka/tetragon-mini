@@ -28,9 +28,9 @@ provision:
       #!/bin/bash
       set -eux -o pipefail    
       curl -sL https://apt.llvm.org/llvm.sh | bash -s -- 19 all
-      apt-get update -y
-      apt-get install -y pkg-config libssl-dev
-      apt-get install -y libzstd-dev
+      apt update
+      apt install -y pkg-config libssl-dev
+      apt install -y libzstd-dev
 
       LLVMFILES=/usr/bin/llvm-*
       CLANGFILES=/usr/bin/clang-*
@@ -47,12 +47,12 @@ provision:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      apt-get update -y
-      apt-get install -y apt-transport-https ca-certificates curl jq
-      apt-get install -y linux-tools-common linux-tools-$(uname -r)
-      apt-get install -y libelf-dev libcap-dev libpcap-dev libbfd-dev binutils-dev build-essential make
-      apt-get install -y bpfcc-tools
-      apt-get install -y python3-pip
+      apt update
+      apt install -y apt-transport-https ca-certificates curl jq
+      apt install -y linux-tools-common linux-tools-$(uname -r)
+      apt install -y libelf-dev libcap-dev libpcap-dev libbfd-dev binutils-dev build-essential make
+      apt install -y bpfcc-tools
+      apt install -y python3-pip
       sysctl -w kernel.bpf_stats_enabled=1
       snap install yq
 
@@ -63,16 +63,16 @@ provision:
       echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
       deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
       deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
-      sudo tee -a /etc/apt/sources.list.d/ddebs.list
-      sudo apt install ubuntu-dbgsym-keyring
-      sudo apt update
-      apt-get install -y bpftrace-dbgsym
+      tee -a /etc/apt/sources.list.d/ddebs.list
+      apt install ubuntu-dbgsym-keyring
+      apt update
+      apt install -y bpftrace-dbgsym
 
   - mode: system
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      apt-get install -y libbpf-dev
+      apt install -y libbpf-dev
       ln -sf /usr/include/$(uname -m)-linux-gnu/asm /usr/include/asm
 
   - mode: system
@@ -120,119 +120,60 @@ provision:
       cargo install bindgen-cli
       cargo install --git https://github.com/aya-rs/aya -- aya-tool
 
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      command -v docker >/dev/null 2>&1 && exit 0
+      export DEBIAN_FRONTEND=noninteractive
+      curl -fsSL https://get.docker.com | sh
+      # NOTE: you may remove the lines below, if you prefer to use rootful docker, not rootless
+      systemctl disable --now docker
+      apt install -y uidmap dbus-user-session
 
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      systemctl --user start dbus
+      dockerd-rootless-setuptool.sh install
+      docker context use rootless
 
-# - mode: system
-#   script: |
-#     #!/bin/bash
-#     [ $(uname -m) = x86_64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-#     [ $(uname -m) = aarch64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
-#     chmod +x ./kubectl
-#     mv ./kubectl /usr/local/bin/kubectl
-#     apt-get install bash-completion
-#     kubectl completion bash > /etc/bash_completion.d/kubectl
-#     chmod a+r /etc/bash_completion.d/kubectl
+  - mode: system
+    script: |
+      #!/bin/bash
+      [ $(uname -m) = x86_64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      [ $(uname -m) = aarch64 ] && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
+      chmod +x ./kubectl
+      mv ./kubectl /usr/local/bin/kubectl
+      apt install bash-completion
+      kubectl completion bash > /etc/bash_completion.d/kubectl
+      chmod a+r /etc/bash_completion.d/kubectl
 
-# - mode: user
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     echo 'alias k=kubectl' >>~/.bashrc
-#     echo 'complete -o default -F __start_kubectl k' >>~/.bashrc
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      echo 'alias k=kubectl' >>~/.bashrc
+      echo 'complete -o default -F __start_kubectl k' >>~/.bashrc
 
-# - mode: system
-#   script: |
-#     #!/bin/bash
-#     [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-amd64
-#     [ $(uname -m) = aarch64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.22.0/kind-linux-arm64
-#     chmod +x ./kind
-#     mv ./kind /usr/local/bin/kind
+  - mode: system
+    script: |
+      #!/bin/bash
+      [ $(uname -m) = x86_64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.26.0/kind-linux-amd64
+      [ $(uname -m) = aarch64 ] && curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.26.0/kind-linux-arm64
+      chmod +x ./kind
+      mv ./kind /usr/local/bin/kind
 
-# - mode: system
-#   script: |
-#     #!/bin/bash
-#     curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-#     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-#     apt update
-#     apt-get install -y helm
-
-# - mode: system
-#   # This script defines the host.docker.internal hostname when hostResolver is disabled.
-#   # It is also needed for lima 0.8.2 and earlier, which does not support hostResolver.hosts.
-#   # Names defined in /etc/hosts inside the VM are not resolved inside containers when
-#   # using the hostResolver; use hostResolver.hosts instead (requires lima 0.8.3 or later).
-#   script: |
-#     #!/bin/sh
-#     sed -i 's/host.lima.internal.*/host.lima.internal host.docker.internal/' /etc/hosts
-
-# - mode: system
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     command -v docker >/dev/null 2>&1 && exit 0
-#     export DEBIAN_FRONTEND=noninteractive
-#     curl -fsSL https://get.docker.com | sh
-
-# - mode: user
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     sudo usermod -aG docker $USER
+  - mode: system
+    script: |
+      #!/bin/bash
+      curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+      apt update
+      apt install -y helm
 
 probes:
-# - description: "golang to be installed"
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     if ! timeout 30s bash -c "until command -v go >/dev/null 2>&1; do sleep 3; done"; then
-#       echo >&2 "golang is not installed yet"
-#       exit 1
-#     fi
-#   hint: |
-#     See "/var/log/cloud-init-output.log". in the guest
-
-# - description: "kubectl to be installed"
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     if ! timeout 30s bash -c "until command -v kubectl >/dev/null 2>&1; do sleep 3; done"; then
-#       echo >&2 "kubectl is not installed yet"
-#       exit 1
-#     fi
-#   hint: |
-#     See "/var/log/cloud-init-output.log". in the guest
-
-# - description: "kind to be installed"
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     if ! timeout 30s bash -c "until command -v kind >/dev/null 2>&1; do sleep 3; done"; then
-#       echo >&2 "kind is not installed yet"
-#       exit 1
-#     fi
-#   hint: |
-#     See "/var/log/cloud-init-output.log". in the guest
-
-# - description: "helm to be installed"
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     if ! timeout 30s bash -c "until command -v helm >/dev/null 2>&1; do sleep 3; done"; then
-#       echo >&2 "helm is not installed yet"
-#       exit 1
-#     fi
-#   hint: |
-#     See "/var/log/cloud-init-output.log". in the guest
-
-# - description: "docker to be installed"
-#   script: |
-#     #!/bin/bash
-#     set -eux -o pipefail
-#     if ! timeout 30s bash -c "until command -v docker >/dev/null 2>&1; do sleep 3; done"; then
-#       echo >&2 "docker is not installed yet"
-#       exit 1
-#     fi
-#   hint: See "/var/log/cloud-init-output.log". in the guest
   - description: "bpftool to be installed"
     script: |
       #!/bin/bash
@@ -243,22 +184,55 @@ probes:
       fi
     hint: See "/var/log/cloud-init-output.log". in the guest
 
-  - description: "user setup to be done"
+  - description: "docker to be installed"
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      if ! timeout 30s bash -c "until test -e /tmp/done >/dev/null 2>&1; do sleep 3; done"; then
-        echo >&2 "user setup is not done yet"
+      if ! timeout 30s bash -c "until command -v docker >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "docker is not installed yet"
         exit 1
       fi
     hint: See "/var/log/cloud-init-output.log". in the guest
 
-# hostResolver:
-#   # hostResolver.hosts requires lima 0.8.3 or later. Names defined here will also
-#   # resolve inside containers, and not just inside the VM itself.
-#   hosts:
-#     host.docker.internal: host.lima.internal
+  - description: "kubectl to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kubectl >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kubectl is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
 
-# portForwards:
-# - guestSocket: "/var/run/docker.sock"
-#   hostSocket: "{{.Dir}}/sock/docker.sock"
+  - description: "kind to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kind >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kind is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "helm to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v helm >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "helm is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "aya-tool to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      sudo su - $USER
+      if ! timeout 30s bash -c "until command -v aya-tool >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "aya-tool is not installed yet"
+        exit 1
+      fi

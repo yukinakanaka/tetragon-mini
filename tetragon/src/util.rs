@@ -42,16 +42,16 @@ pub enum NamespaceType {
 impl NamespaceType {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Uts => &"uts",
-            Self::Ipc => &"ipc",
-            Self::Mnt => &"mnt",
-            Self::Pid => &"pid",
-            Self::PidForChildren => &"pid_for_children",
-            Self::Net => &"net",
-            Self::Time => &"time",
-            Self::TimeForChildren => &"time_for_children",
-            Self::Cgroup => &"cgroup",
-            Self::User => &"user",
+            Self::Uts => "uts",
+            Self::Ipc => "ipc",
+            Self::Mnt => "mnt",
+            Self::Pid => "pid",
+            Self::PidForChildren => "pid_for_children",
+            Self::Net => "net",
+            Self::Time => "time",
+            Self::TimeForChildren => "time_for_children",
+            Self::Cgroup => "cgroup",
+            Self::User => "user",
         }
     }
 }
