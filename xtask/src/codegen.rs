@@ -10,6 +10,8 @@ pub fn generate() -> Result<(), anyhow::Error> {
         &[],
     )?;
     let mut out = File::create(dir.join("vmlinux.rs"))?;
+
+    writeln!(out, "#![allow(clippy::all)]")?;
     write!(out, "{}", bindings)?;
     Ok(())
 }

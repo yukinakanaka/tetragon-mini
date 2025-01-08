@@ -1,6 +1,6 @@
 use crate::api::{get_events_response::Event, ProcessExec, ProcessExit};
+use crate::process;
 use crate::process::cache::cache_get;
-use crate::process::process;
 use anyhow::Context;
 use aya::{
     include_bytes_aligned,
@@ -110,8 +110,7 @@ impl EbpfManager {
 
                 loop {
                     let events = buf.read_events(&mut buffers).await.unwrap();
-                    for i in 0..events.read {
-                        let buf = &mut buffers[i];
+                    for buf in buffers.iter_mut().take(events.read) {
                         let ptr = buf.as_ptr() as *const EventBytes;
                         let event = unsafe { ptr.read_unaligned() };
                         let msg_common: MsgCommon = match event.bytes.try_into() {

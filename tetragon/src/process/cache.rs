@@ -1,4 +1,4 @@
-use crate::process::process::ProcessInternal;
+use crate::process::ProcessInternal;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 use std::sync::LazyLock;

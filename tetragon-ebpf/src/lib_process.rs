@@ -34,5 +34,5 @@ pub unsafe fn execve_map_delete(pid: __u32) {
     let _ = maps::EXECVE_MAP.remove(&pid);
 }
 
-pub const MAXARGS: usize = 20;
-pub const MAXARGLENGTH: usize = 256;
+pub const _MAXARGS: usize = 20;
+pub const _MAXARGLENGTH: usize = 256;
