@@ -12,14 +12,14 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Rustup
       run: |
-        rustup toolchain add nightly-2024-07-23
-        rustup toolchain install nightly-2024-07-23 --component rust-src
+        rustup toolchain add nightly-2024-11-01
+        rustup toolchain install nightly-2024-11-01 --component rust-src
     - name: Install Protc
       run: sudo apt install -y protobuf-compiler libprotobuf-dev
     - name: Cache cargo registry
