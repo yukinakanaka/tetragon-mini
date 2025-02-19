@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 aya-ebpf = "0.1.1"
+aya-ebpf-bindings = "0.1.1"
+aya-ebpf-cty = "0.2.2"
 aya-log-ebpf = "0.1.1"
 tetragon-common = { version = "0.1.0", path = "../tetragon-common" }
 

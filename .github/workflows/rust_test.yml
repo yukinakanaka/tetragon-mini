@@ -13,6 +13,9 @@ env:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -32,8 +35,28 @@ jobs:
           ~/.cargo/git/db/
           target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Codegen
-      run: cargo xtask codegen
+    - name: Check codegen works fine
+      run: |
+        if [ -e /sys/kernel/btf/vmlinux ]; then
+            ls -l /sys/kernel/btf/vmlinux
+        else
+            echo "Warning: /sys/kernel/btf/vmlinux not found"
+            exit 1
+        fi
+
+        if ! command -v bindgen > /dev/null 2>&1; then
+            echo "bindgen not found, running cargo install bindgen..."
+            cargo install bindgen-cli
+        fi
+
+        cargo xtask codegen
+        git diff tetragon-common/src/vmlinux.rs
+
+        # The following can be enabled after supporting multiple kernel versions and platforms.
+        # if git diff --name-only | grep -q "tetragon-common/src/vmlinux.rs"; then
+        #     echo "tetragon-common/src/vmlinux.rs hasn't been update. Update it by cargo task codegen."
+        #     exit 1
+        # fi
     - name: Check formatting
       run: cargo fmt --all --check
     # - name: Build test
