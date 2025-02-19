@@ -15,7 +15,7 @@ pub unsafe fn execve_map_get(pid: &__u32) -> Option<*mut ExecveMapValue> {
         }
     };
 
-    match maps::EXECVE_MAP.insert(pid, &buf.value, 0) {
+    match maps::EXECVE_MAP.insert(pid, &buf, 0) {
         Ok(_) => {
             // TODO update stats
         }

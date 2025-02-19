@@ -7,27 +7,14 @@ use crate::lib_data_msg::MsgData;
 use tetragon_common::process::{EventBytes, ExecveInfo, ExecveMapValue, ProcessEvent};
 use tetragon_common::vmlinux::{__u32, __u64};
 
-#[repr(C)]
-pub struct ProcessEventBuf {
-    pub p: ProcessEvent,
-}
-
-#[map(name = "DATA_HEAP_CUSTOM")]
-pub static mut DATA_HEAP_CUSTOM: PerCpuArray<ProcessEventBuf> = PerCpuArray::with_max_entries(1, 0);
-
 #[map(name = "PROCESS_EVENTS")]
 pub static PROCESS_EVENTS: PerfEventArray<ProcessEvent> = PerfEventArray::new(0);
 
 #[map(name = "EXECVE_MAP")]
 pub static EXECVE_MAP: HashMap<__u32, ExecveMapValue> = HashMap::with_max_entries(32768, 0);
 
-#[repr(C)]
-pub struct ExecveMapValueBuf {
-    pub value: ExecveMapValue,
-}
-
 #[map(name = "EXECVE_VAL")]
-pub static mut EXECVE_VAL: PerCpuArray<ExecveMapValueBuf> = PerCpuArray::with_max_entries(1, 0);
+pub static mut EXECVE_VAL: PerCpuArray<ExecveMapValue> = PerCpuArray::with_max_entries(1, 0);
 
 #[map(name = "TCPMON_MAP")]
 pub static TCPMON_MAP: PerfEventArray<EventBytes> = PerfEventArray::new(0);

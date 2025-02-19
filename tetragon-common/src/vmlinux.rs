@@ -7605,6 +7605,7 @@ pub struct inode {
     pub i_mode: umode_t,
     pub i_opflags: ::aya_ebpf::cty::c_ushort,
     pub i_uid: kuid_t,
+    pub i_lru: list_head,
     pub i_gid: kgid_t,
     pub i_flags: ::aya_ebpf::cty::c_uint,
     pub i_acl: *mut posix_acl,
@@ -7635,7 +7636,6 @@ pub struct inode {
     pub i_wb_frn_winner: ::aya_ebpf::cty::c_int,
     pub i_wb_frn_avg_time: u16_,
     pub i_wb_frn_history: u16_,
-    pub i_lru: list_head,
     pub i_sb_list: list_head,
     pub i_wb_list: list_head,
     pub __bindgen_anon_2: inode__bindgen_ty_2,
@@ -16637,7 +16637,7 @@ pub struct cdrom_device_ops {
     pub select_speed: ::core::option::Option<
         unsafe extern "C" fn(
             arg1: *mut cdrom_device_info,
-            arg2: ::aya_ebpf::cty::c_int,
+            arg2: ::aya_ebpf::cty::c_ulong,
         ) -> ::aya_ebpf::cty::c_int,
     >,
     pub get_last_session: ::core::option::Option<
@@ -18866,12 +18866,7 @@ pub struct ctl_table_root {
         unsafe extern "C" fn(arg1: *mut ctl_table_root) -> *mut ctl_table_set,
     >,
     pub set_ownership: ::core::option::Option<
-        unsafe extern "C" fn(
-            arg1: *mut ctl_table_header,
-            arg2: *mut ctl_table,
-            arg3: *mut kuid_t,
-            arg4: *mut kgid_t,
-        ),
+        unsafe extern "C" fn(arg1: *mut ctl_table_header, arg2: *mut kuid_t, arg3: *mut kgid_t),
     >,
     pub permissions: ::core::option::Option<
         unsafe extern "C" fn(
@@ -34584,6 +34579,7 @@ pub struct led_trigger {
         unsafe extern "C" fn(arg1: *mut led_classdev) -> ::aya_ebpf::cty::c_int,
     >,
     pub deactivate: ::core::option::Option<unsafe extern "C" fn(arg1: *mut led_classdev)>,
+    pub brightness: led_brightness::Type,
     pub trigger_type: *mut led_hw_trigger_type,
     pub leddev_list_lock: spinlock_t,
     pub led_cdevs: list_head,
@@ -37237,7 +37233,7 @@ pub struct mountpoint {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct mptcp_mib {
-    pub mibs: [::aya_ebpf::cty::c_ulong; 59usize],
+    pub mibs: [::aya_ebpf::cty::c_ulong; 61usize],
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -42672,16 +42668,7 @@ pub struct per_cpu_pages {
     pub alloc_factor: u8_,
     pub expire: u8_,
     pub free_count: ::aya_ebpf::cty::c_short,
-    pub lists: [list_head; 13usize],
-    pub _bitfield_align_1: [u8; 0],
-    pub _bitfield_1: __BindgenBitfieldUnit<[u8; 16usize]>,
-}
-impl per_cpu_pages {
-    #[inline]
-    pub fn new_bitfield_1() -> __BindgenBitfieldUnit<[u8; 16usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 16usize]> = Default::default();
-        __bindgen_bitfield_unit
-    }
+    pub lists: [list_head; 14usize],
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -43319,6 +43306,7 @@ pub struct perf_buffer {
     pub mmap_count: atomic_t,
     pub mmap_locked: ::aya_ebpf::cty::c_ulong,
     pub mmap_user: *mut user_struct,
+    pub aux_mutex: mutex,
     pub aux_head: ::aya_ebpf::cty::c_long,
     pub aux_nest: ::aya_ebpf::cty::c_uint,
     pub aux_wakeup: ::aya_ebpf::cty::c_long,
@@ -45045,6 +45033,7 @@ pub struct perf_event {
     pub pending_irq: irq_work,
     pub pending_task: callback_head,
     pub pending_work: ::aya_ebpf::cty::c_uint,
+    pub pending_work_wait: rcuwait,
     pub event_limit: atomic_t,
     pub addr_filters: perf_addr_filters_head,
     pub addr_filter_ranges: *mut perf_addr_filter_range,
@@ -50352,14 +50341,16 @@ pub struct sb_writers {
     pub rw_sem: [percpu_rw_semaphore; 3usize],
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct sbitmap_word {
     pub word: ::aya_ebpf::cty::c_ulong,
     pub _bitfield_align_1: [u8; 0],
     pub _bitfield_1: __BindgenBitfieldUnit<[u8; 56usize]>,
     pub cleared: ::aya_ebpf::cty::c_ulong,
+    pub swap_lock: spinlock_t,
     pub _bitfield_align_2: [u8; 0],
-    pub _bitfield_2: __BindgenBitfieldUnit<[u8; 56usize]>,
+    pub _bitfield_2: __BindgenBitfieldUnit<[u8; 48usize]>,
+    pub __bindgen_padding_0: u32,
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -54927,7 +54918,6 @@ pub struct svc_program {
     pub pg_vers: *mut *const svc_version,
     pub pg_name: *mut ::aya_ebpf::cty::c_char,
     pub pg_class: *mut ::aya_ebpf::cty::c_char,
-    pub pg_stats: *mut svc_stat,
     pub pg_authenticate:
         ::core::option::Option<unsafe extern "C" fn(arg1: *mut svc_rqst) -> svc_auth_status::Type>,
     pub pg_init_request: ::core::option::Option<
@@ -59145,7 +59135,7 @@ pub struct worker {
     pub last_active: ::aya_ebpf::cty::c_ulong,
     pub flags: ::aya_ebpf::cty::c_uint,
     pub id: ::aya_ebpf::cty::c_int,
-    pub desc: [::aya_ebpf::cty::c_char; 24usize],
+    pub desc: [::aya_ebpf::cty::c_char; 32usize],
     pub rescue_wq: *mut workqueue_struct,
 }
 #[repr(C)]
@@ -60138,7 +60128,7 @@ pub struct xfrm_stats {
 pub struct xfrm_state {
     pub xs_net: possible_net_t,
     pub __bindgen_anon_1: xfrm_state__bindgen_ty_1,
-    pub bysrc: hlist_node,
+    pub __bindgen_anon_2: xfrm_state__bindgen_ty_2,
     pub byspi: hlist_node,
     pub byseq: hlist_node,
     pub refcnt: refcount_t,
@@ -60150,7 +60140,7 @@ pub struct xfrm_state {
     pub tfcpad: u32_,
     pub genid: u32_,
     pub km: xfrm_state_walk,
-    pub props: xfrm_state__bindgen_ty_2,
+    pub props: xfrm_state__bindgen_ty_3,
     pub lft: xfrm_lifetime_cfg,
     pub aalg: *mut xfrm_algo_auth,
     pub ealg: *mut xfrm_algo,
@@ -60197,7 +60187,13 @@ pub union xfrm_state__bindgen_ty_1 {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct xfrm_state__bindgen_ty_2 {
+pub union xfrm_state__bindgen_ty_2 {
+    pub dev_gclist: hlist_node,
+    pub bysrc: hlist_node,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct xfrm_state__bindgen_ty_3 {
     pub reqid: u32_,
     pub mode: u8_,
     pub replay_window: u8_,
