@@ -36,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let event = response.event.unwrap();
         match &event {
             Event::ProcessExec(process_exec) => {
+                debug!("process_exec: {:?}", process_exec);
                 println!(
                     "🚀 process\t{}: {}: {} {}",
                     process_exec.process.as_ref().unwrap().pid.unwrap(),
@@ -45,6 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Event::ProcessExit(process_exit) => {
+                debug!("process_exit: {:?}", process_exit);
                 println!(
                     "💥 exit\t\t{}: {}: {} {}",
                     process_exit.process.as_ref().unwrap().pid.unwrap(),
