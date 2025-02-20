@@ -98,7 +98,7 @@ pub fn init_process_internal_exec(
         .map(|valid_str| valid_str.to_string())
         .map_err(|_| anyhow::anyhow!("Error converting container_id to String"))?;
 
-    let (args, cwd) = args_decoder("args".to_string(), process.flags);
+    let (args, cwd) = args_decoder(&event.exe.args, process.flags);
 
     let parent_exec_id = if parent.pid != 0 {
         get_exec_id_from_key(parent)

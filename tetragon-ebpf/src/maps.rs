@@ -16,6 +16,13 @@ pub static EXECVE_MAP: HashMap<__u32, ExecveMapValue> = HashMap::with_max_entrie
 #[map(name = "EXECVE_VAL")]
 pub static mut EXECVE_VAL: PerCpuArray<ExecveMapValue> = PerCpuArray::with_max_entries(1, 0);
 
+#[repr(C)]
+pub struct Heap {
+    pub heap: [u8; 4096], // In Linux, max lengh of binary file path is 4096
+}
+#[map(name = "GARBAGE_HEAP")]
+pub static mut GARBAGE_HEAP: PerCpuArray<Heap> = PerCpuArray::with_max_entries(1, 0);
+
 #[map(name = "TCPMON_MAP")]
 pub static TCPMON_MAP: PerfEventArray<EventBytes> = PerfEventArray::new(0);
 

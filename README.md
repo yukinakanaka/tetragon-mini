@@ -9,7 +9,7 @@
 - Compared to Tetragon, it has a smaller binary size (because it's written in Rust)
 
 ## Progress
-![](https://geps.dev/progress/5)
+![](https://geps.dev/progress/7)
 ### Done
 - Simple Process Lifecycle Monitoring
 

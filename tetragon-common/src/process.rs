@@ -5,7 +5,11 @@ use crate::bpf_cred::{MsgCapabilities, MsgCred};
 use crate::common::{MsgCommon, EVENT_SIZE};
 use crate::msg_types::MsgOps;
 use crate::vmlinux::*;
-pub const MAX_PATH: usize = 512;
+
+// In Linux, it's 4096, but simplified to 256 for easier debugging.
+pub const BINARY_PATH_MAX_LEN: usize = 256;
+// Usually 2MiB in most kernels, but simplified to 512 for easier debugging.
+pub const ARGS_MAX_LEN: usize = 512;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -13,7 +17,7 @@ pub struct ProcessEvent {
     pub msg_ops: MsgOps,
     pub uid: u32,
     pub pid: i32,
-    pub filename: [u8; MAX_PATH],
+    pub filename: [u8; BINARY_PATH_MAX_LEN],
     pub filename_len: usize,
 }
 
@@ -23,7 +27,7 @@ impl Default for ProcessEvent {
             msg_ops: MsgOps::default(),
             uid: u32::default(),
             pid: i32::default(),
-            filename: [u8::default(); MAX_PATH],
+            filename: [u8::default(); BINARY_PATH_MAX_LEN],
             filename_len: usize::default(),
         }
     }
@@ -115,13 +119,11 @@ impl Default for MsgK8s {
     }
 }
 
-pub const BINARY_PATH_MAX_LEN: usize = 256;
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct HeapExe {
     pub filename: [u8; BINARY_PATH_MAX_LEN],
-    pub args: [u8; BINARY_PATH_MAX_LEN],
+    pub args: [u8; ARGS_MAX_LEN],
     pub off: u8,
     pub len: __u32,
     pub error: __u32,
@@ -131,7 +133,7 @@ impl Default for HeapExe {
     fn default() -> Self {
         Self {
             filename: [0; BINARY_PATH_MAX_LEN],
-            args: [0; BINARY_PATH_MAX_LEN],
+            args: [0; ARGS_MAX_LEN],
             off: u8::default(),
             len: __u32::default(),
             error: __u32::default(),
@@ -318,10 +320,9 @@ pub struct EventBytes {
     pub bytes: [u8; EVENT_SIZE],
 }
 
-impl EventBytes {
-    pub fn initialize(mut self) {
-        self.bytes = [0; EVENT_SIZE];
-    }
+#[inline]
+pub fn init_bytes(event: &mut EventBytes) {
+    event.bytes = [0; EVENT_SIZE];
 }
 
 #[cfg(feature = "user")]

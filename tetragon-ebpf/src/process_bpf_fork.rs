@@ -11,7 +11,7 @@ use aya_ebpf::{
 use aya_log_ebpf::*;
 use tetragon_common::flags::msg_flags;
 use tetragon_common::msg_types::MsgOps;
-use tetragon_common::process::{Binary, EventBytes, MsgCloneEvent, MsgExecveKey};
+use tetragon_common::process::{init_bytes, Binary, EventBytes, MsgCloneEvent, MsgExecveKey};
 use tetragon_common::vmlinux::{__u32, pid_t, task_struct};
 
 #[kprobe(function = "wake_up_new_task")]
@@ -97,7 +97,7 @@ unsafe fn try_wake_up_new_task(ctx: ProbeContext) -> Result<u32, i64> {
         let ptr = CLONE_HEAP_MAP.get_ptr_mut(0).ok_or(1)?;
         &mut *ptr
     };
-    event_bytes.initialize();
+    init_bytes(event_bytes);
     let msg: &mut MsgCloneEvent =
         unsafe { &mut *(event_bytes as *mut EventBytes as *mut MsgCloneEvent) };
 

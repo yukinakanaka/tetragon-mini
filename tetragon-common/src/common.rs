@@ -2,7 +2,7 @@ use core::mem;
 
 use crate::vmlinux::*;
 
-pub const EVENT_SIZE: usize = 904;
+pub const EVENT_SIZE: usize = 1160;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
