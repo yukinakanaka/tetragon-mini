@@ -7,3 +7,4 @@ pub mod api {
     #![allow(clippy::all)]
     tonic::include_proto!("tetragon");
 }
+pub mod ktime;

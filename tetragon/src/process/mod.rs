@@ -7,6 +7,7 @@ use crate::api::{
     BinaryProperties, Capabilities, FileProperties, InodeProperties, Namespaces,
     Process as ApiProcess, ProcessCredentials,
 };
+use crate::ktime::to_proto_opt;
 use crate::process::args::args_decoder;
 use crate::process::cache::{cache_add, cache_get};
 use crate::process::podinfo::get_pod_info;
@@ -18,10 +19,10 @@ use crate::reader::namespace::get_msg_namespaces;
 use crate::reader::proc::INVALID_UID;
 use anyhow;
 use base64::{engine::general_purpose, Engine as _};
-use prost_types::Timestamp;
 use tetragon_common::flags::msg_flags;
 use tetragon_common::process::{MsgCloneEvent, MsgExecveEvent, MsgExecveKey, MsgProcess};
 use tracing::*;
+
 #[derive(Debug, Default, Clone)]
 pub struct ProcessInternal {
     pub process: ApiProcess,
@@ -60,10 +61,7 @@ pub fn init_process_internal_clone(
     }
 
     parent.process.tid = Some(event.tid);
-    parent.process.start_time = Some(Timestamp {
-        seconds: event.ktime as i64,
-        nanos: 0,
-    });
+    parent.process.start_time = Some(to_proto_opt(event.ktime));
     parent.process.refcnt = 1;
 
     Ok(parent)
@@ -181,10 +179,7 @@ pub fn init_process_internal_exec(
             binary,
             arguments: args,
             flags: flags.to_string(),
-            start_time: Some(Timestamp {
-                seconds: process.ktime as i64,
-                nanos: 0,
-            }),
+            start_time: Some(to_proto_opt(process.ktime)),
             auid: Some(process.auid),
             pod: Some(proto_pod),
             exec_id,
