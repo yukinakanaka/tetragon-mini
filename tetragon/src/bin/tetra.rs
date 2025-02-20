@@ -37,18 +37,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match &event {
             Event::ProcessExec(process_exec) => {
                 println!(
-                    "🚀 process\t{}: {}: {}",
+                    "🚀 process\t{}: {}: {} {}",
                     process_exec.process.as_ref().unwrap().pid.unwrap(),
                     translate_uid(process_exec.process.as_ref().unwrap().uid.unwrap()),
-                    process_exec.process.as_ref().unwrap().binary
+                    process_exec.process.as_ref().unwrap().binary,
+                    process_exec.process.as_ref().unwrap().arguments,
                 );
             }
             Event::ProcessExit(process_exit) => {
                 println!(
-                    "💥 exit\t\t{}: {}: {}",
+                    "💥 exit\t\t{}: {}: {} {}",
                     process_exit.process.as_ref().unwrap().pid.unwrap(),
                     translate_uid(process_exit.process.as_ref().unwrap().uid.unwrap()),
-                    process_exit.process.as_ref().unwrap().binary
+                    process_exit.process.as_ref().unwrap().binary,
+                    process_exit.process.as_ref().unwrap().arguments,
                 );
             }
             _ => {

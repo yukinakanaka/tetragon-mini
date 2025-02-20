@@ -5,7 +5,7 @@ use aya_ebpf::{macros::kprobe, programs::ProbeContext};
 use aya_log_ebpf::*;
 use core::mem;
 use tetragon_common::msg_types::MsgOps;
-use tetragon_common::process::{EventBytes, MsgExit};
+use tetragon_common::process::{init_bytes, EventBytes, MsgExit};
 use tetragon_common::vmlinux::{__u32, task_struct};
 
 #[kprobe(function = "acct_process")]
@@ -34,7 +34,7 @@ pub unsafe fn event_exit_send(ctx: &ProbeContext, tgid: __u32) -> Result<u32, i6
             let ptr = maps::EXIT_HEAP_MAP.get_ptr_mut(0).ok_or(1)?;
             &mut *ptr
         };
-        event_bytes.initialize();
+        init_bytes(event_bytes);
         let exit: &mut MsgExit = unsafe { &mut *(event_bytes as *mut EventBytes as *mut MsgExit) };
 
         exit.common.op = MsgOps::MsgOpExit as u8;

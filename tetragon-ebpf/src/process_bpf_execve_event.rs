@@ -6,8 +6,8 @@ use crate::process_bpf_process_event::{
 use crate::process_bpf_rate::cgroup_rate;
 use crate::process_bpf_task::{event_find_parent, event_minimal_parent, get_task_pid_vnr};
 use aya_ebpf::helpers::{
-    bpf_probe_read_kernel_str_bytes,
-    gen::{bpf_get_current_pid_tgid, bpf_probe_read_str},
+    bpf_probe_read_kernel_str_bytes, bpf_probe_read_user_str_bytes,
+    gen::{bpf_get_current_pid_tgid, bpf_probe_read_str, bpf_probe_read_user},
 };
 use aya_ebpf::{
     helpers::{bpf_ktime_get_ns, bpf_probe_read_kernel},
@@ -18,9 +18,10 @@ use aya_log_ebpf::*;
 use tetragon_common::flags::msg_flags;
 use tetragon_common::msg_types::MsgOps;
 use tetragon_common::process::{
-    Binary, EventBytes, MsgExecveEvent, MsgExecveKey, MsgNs, MsgProcess, BINARY_PATH_MAX_LEN,
+    init_bytes, Binary, EventBytes, MsgExecveEvent, MsgExecveKey, MsgNs, MsgProcess, ARGS_MAX_LEN,
+    BINARY_PATH_MAX_LEN,
 };
-use tetragon_common::vmlinux::{__u32, __u64, linux_binprm, pid_t, task_struct};
+use tetragon_common::vmlinux::{__u32, __u64, linux_binprm, mm_struct, pid_t, task_struct};
 
 #[btf_tracepoint(function = "sched_process_exec")]
 pub fn sched_process_exec(ctx: BtfTracePointContext) -> u32 {
@@ -35,7 +36,8 @@ unsafe fn try_sched_process_exec(ctx: BtfTracePointContext) -> Result<u32, i64> 
         let ptr = maps::EXECVE_MSG_HEAP_MAP.get_ptr_mut(0).ok_or(1)?;
         &mut *ptr
     };
-    event_bytes.initialize();
+    init_bytes(event_bytes);
+
     let event: &mut MsgExecveEvent =
         unsafe { &mut *(event_bytes as *mut EventBytes as *mut MsgExecveEvent) };
     event.parent_flags = 1;
@@ -90,6 +92,8 @@ unsafe fn try_sched_process_exec(ctx: BtfTracePointContext) -> Result<u32, i64> 
     let filename_ptr = linux_binprm.filename;
     bpf_probe_read_kernel_str_bytes(filename_ptr, &mut event.exe.filename)
         .map(|s| core::str::from_utf8_unchecked(s))?;
+
+    let _ = read_args(task, event);
 
     let res = maps::EXECVE_CALLS.tail_call(&ctx, 0);
     if res.is_err() {
@@ -173,9 +177,9 @@ unsafe fn try_execve_send(ctx: BtfTracePointContext) -> Result<u32, i64> {
         curr.bin = Binary::default();
 
         curr.bin.path_length = bpf_probe_read_str(
-            curr.bin.path.as_mut_ptr() as *mut core::ffi::c_void,
+            curr.bin.path.as_mut_ptr() as *mut aya_ebpf_cty::c_void,
             BINARY_PATH_MAX_LEN as u32,
-            event.process.args as *const core::ffi::c_void,
+            event.process.args as *const aya_ebpf_cty::c_void,
         );
 
         if curr.bin.path_length > 1 {
@@ -204,4 +208,31 @@ unsafe fn read_execve_shared_info(p: &mut MsgProcess, pid: __u64) {
             let _ = maps::TG_EXECVE_JOINED_INFO_MAP.remove(&pid);
         }
     }
+}
+
+#[inline]
+unsafe fn read_args(task: *const task_struct, event: &mut MsgExecveEvent) -> Result<u32, i64> {
+    let mm: *mut mm_struct = bpf_probe_read_kernel(&(*task).mm)?;
+    let arg_start = bpf_probe_read_kernel(&(*mm).__bindgen_anon_1.arg_start)?;
+    let arg_end = bpf_probe_read_kernel(&(*mm).__bindgen_anon_1.arg_end)?;
+
+    // First argument is binary path, and ignore it
+    let heap = unsafe {
+        let ptr = maps::GARBAGE_HEAP.get_ptr_mut(0).ok_or(0)?;
+        &mut *ptr
+    };
+    let binary_path = bpf_probe_read_user_str_bytes(arg_start as *const u8, &mut heap.heap)?;
+
+    let arg_start = arg_start + binary_path.len() as u64 + 1;
+
+    let args_len = (arg_end - arg_start) as u32;
+    // This is needed to pass verifier check
+    let args_len = args_len.min(ARGS_MAX_LEN as u32);
+
+    bpf_probe_read_user(
+        event.exe.args.as_mut_ptr() as *mut aya_ebpf_cty::c_void,
+        args_len,
+        arg_start as *const aya_ebpf_cty::c_void,
+    );
+    Ok(0)
 }
