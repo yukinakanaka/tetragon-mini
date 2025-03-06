@@ -4,6 +4,7 @@ use tetragon::bpf::{
     init_ebpf,
     maps::{get_process_events_map, write_execve_map},
 };
+use tetragon::metrics::*;
 use tetragon::observer::run_events;
 use tetragon::process::{print_struct_size, procfs::initial_execve_map_valuses};
 use tetragon::server::FineGuidanceSensorsService;
@@ -12,6 +13,9 @@ use tracing::*;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 async fn app_main() -> anyhow::Result<()> {
+    let meter_provider = init_metrics();
+    let trace_provider = init_traces();
+
     let (stop_tx, _stop_rx) = tokio::sync::broadcast::channel::<()>(1);
     let (event_tx, event_rx) = tokio::sync::broadcast::channel::<Event>(1);
 
@@ -81,6 +85,9 @@ async fn app_main() -> anyhow::Result<()> {
             results
         }
     };
+
+    let _ = meter_provider.shutdown();
+    let _ = trace_provider.shutdown();
 
     let mut failed = false;
     for result in results {
