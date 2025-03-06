@@ -45,3 +45,8 @@ pub static mut EXIT_HEAP_MAP: PerCpuArray<EventBytes> = PerCpuArray::with_max_en
 #[map(name = "TG_EXECVE_JOINED_INFO_MAP")]
 pub static mut TG_EXECVE_JOINED_INFO_MAP: LruHashMap<__u64, ExecveInfo> =
     LruHashMap::with_max_entries(8192, 0);
+
+#[map(name = "EXECVE_MAP_STATS")]
+pub static mut EXECVE_MAP_STATS: PerCpuArray<u64> = PerCpuArray::with_max_entries(2, 0);
+pub const MAP_STATS_COUNT: u32 = 0;
+pub const MAP_STATS_ERROR: u32 = 1;

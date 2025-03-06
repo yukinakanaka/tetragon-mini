@@ -17,7 +17,9 @@ pub unsafe fn execve_map_get(pid: &__u32) -> Option<*mut ExecveMapValue> {
 
     match maps::EXECVE_MAP.insert(pid, &buf, 0) {
         Ok(_) => {
-            // TODO update stats
+            if let Some(count) = maps::EXECVE_MAP_STATS.get_ptr_mut(maps::MAP_STATS_COUNT) {
+                *count = *count + 1;
+            }
         }
         Err(_) => execve_map_error(),
     }
@@ -26,12 +28,21 @@ pub unsafe fn execve_map_get(pid: &__u32) -> Option<*mut ExecveMapValue> {
 
 #[inline]
 pub unsafe fn execve_map_error() {
-    // TODO increment the map error counter
+    if let Some(count) = maps::EXECVE_MAP_STATS.get_ptr_mut(maps::MAP_STATS_ERROR) {
+        *count = *count + 1;
+    }
 }
 
 #[inline]
 pub unsafe fn execve_map_delete(pid: __u32) {
-    let _ = maps::EXECVE_MAP.remove(&pid);
+    match maps::EXECVE_MAP.remove(&pid) {
+        Ok(_) => {
+            if let Some(count) = maps::EXECVE_MAP_STATS.get_ptr_mut(maps::MAP_STATS_COUNT) {
+                *count = *count - 1;
+            }
+        }
+        Err(_) => execve_map_error(),
+    }
 }
 
 pub const _MAXARGS: usize = 20;
