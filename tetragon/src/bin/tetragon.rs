@@ -1,43 +1,28 @@
-use core::mem;
 use futures::future::{FutureExt, TryFutureExt};
-use tetragon_common::process::{ExecveMapValue, MsgExecveKey};
-use tracing::*;
-use tracing_subscriber::filter::{EnvFilter, LevelFilter};
-
 use tetragon::api::get_events_response::Event;
-use tetragon::bpf::EbpfManager;
-use tetragon::process::procfs::collect_execve_map_values;
+use tetragon::bpf::{
+    init_ebpf,
+    maps::{get_process_events_map, write_execve_map},
+};
+use tetragon::observer::run_events;
+use tetragon::process::{print_struct_size, procfs::initial_execve_map_valuses};
 use tetragon::server::FineGuidanceSensorsService;
 use tetragon::util::{shutdown_signals, stop_signal};
-use tetragon_common::process::{MsgCloneEvent, MsgExecveEvent, MsgExit};
+use tracing::*;
+use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
 async fn app_main() -> anyhow::Result<()> {
     let (stop_tx, _stop_rx) = tokio::sync::broadcast::channel::<()>(1);
     let (event_tx, event_rx) = tokio::sync::broadcast::channel::<Event>(1);
 
-    let mut bpf = EbpfManager::new()?;
+    let (mut bpf, _execve_calls_map_guard) = init_ebpf()?;
 
-    let mut execve_map_values = collect_execve_map_values()?;
-
-    let zero_execve_map_value = ExecveMapValue {
-        pkey: MsgExecveKey {
-            pid: 0,
-            ktime: 1,
-            ..Default::default()
-        },
-        key: MsgExecveKey {
-            pid: 0,
-            ktime: 1,
-            ..Default::default()
-        },
-        ..Default::default()
-    };
-    execve_map_values.push(zero_execve_map_value);
-    bpf.write_execve_map(execve_map_values).await?;
+    let execve_map_values = initial_execve_map_valuses()?;
+    write_execve_map(&mut bpf, execve_map_values).await?;
 
     let ebpf_thread = tokio::spawn({
         let stop = stop_signal(stop_tx.subscribe());
-        async move { bpf.observe_event_map(event_tx, stop).await }
+        async move { run_events(get_process_events_map(&mut bpf)?, event_tx, stop).await }
     });
 
     let server = FineGuidanceSensorsService { rx: event_rx };
@@ -128,11 +113,4 @@ async fn main() -> anyhow::Result<()> {
         error!("{e:#}");
         e
     })
-}
-
-fn print_struct_size() {
-    info!("Struct size:");
-    info!("MsgCloneEvent size: {}", mem::size_of::<MsgCloneEvent>());
-    info!("MsgExecveEvent size: {}", mem::size_of::<MsgExecveEvent>());
-    info!("MsgExit size: {}", mem::size_of::<MsgExit>());
 }

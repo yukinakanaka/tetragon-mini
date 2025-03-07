@@ -291,7 +291,26 @@ fn collect_processes() -> anyhow::Result<Vec<Process>> {
     Ok(res_procs)
 }
 
-pub fn collect_execve_map_values() -> anyhow::Result<Vec<ExecveMapValue>> {
+pub fn initial_execve_map_valuses() -> anyhow::Result<Vec<ExecveMapValue>> {
+    let mut execve_map_values = collect_execve_map_values()?;
+    let zero_execve_map_value = ExecveMapValue {
+        pkey: MsgExecveKey {
+            pid: 0,
+            ktime: 1,
+            ..Default::default()
+        },
+        key: MsgExecveKey {
+            pid: 0,
+            ktime: 1,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    execve_map_values.push(zero_execve_map_value);
+    Ok(execve_map_values)
+}
+
+fn collect_execve_map_values() -> anyhow::Result<Vec<ExecveMapValue>> {
     let procs = collect_processes()?;
     info!("Collected. procs: {}", procs.len());
 
