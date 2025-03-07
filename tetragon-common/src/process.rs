@@ -355,3 +355,25 @@ pub struct MsgProcess {
     pub ktime: __u64,
     pub args: u8,
 }
+
+pub const SENT_FAILED_UNKNOWN: usize = 0; // unknown error
+pub const SENT_FAILED_ENOENT: usize = 1; // ENOENT
+pub const SENT_FAILED_E2BIG: usize = 2; // E2BIG
+pub const SENT_FAILED_EBUSY: usize = 3; // EBUSY
+pub const SENT_FAILED_EINVAL: usize = 4; // EINVAL
+pub const SENT_FAILED_ENOSPC: usize = 5; // ENOSPC
+pub const SENT_FAILED_MAX: usize = 6;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct KernelStats {
+    sent_failed: [[u64; SENT_FAILED_MAX]; 256],
+}
+
+impl Default for KernelStats {
+    fn default() -> Self {
+        Self {
+            sent_failed: [[0; SENT_FAILED_MAX]; 256],
+        }
+    }
+}
