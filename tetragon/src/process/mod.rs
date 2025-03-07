@@ -19,8 +19,9 @@ use crate::reader::namespace::get_msg_namespaces;
 use crate::reader::proc::INVALID_UID;
 use anyhow;
 use base64::{engine::general_purpose, Engine as _};
+use core::mem;
 use tetragon_common::flags::msg_flags;
-use tetragon_common::process::{MsgCloneEvent, MsgExecveEvent, MsgExecveKey, MsgProcess};
+use tetragon_common::process::{MsgCloneEvent, MsgExecveEvent, MsgExecveKey, MsgExit, MsgProcess};
 use tracing::*;
 
 #[derive(Debug, Default, Clone)]
@@ -214,4 +215,11 @@ pub async fn add_exec_event(event: &mut MsgExecveEvent) -> anyhow::Result<Proces
     cache_add(proc.clone()).await?;
 
     Ok(proc)
+}
+
+pub fn print_struct_size() {
+    info!("Struct size:");
+    info!("MsgCloneEvent size: {}", mem::size_of::<MsgCloneEvent>());
+    info!("MsgExecveEvent size: {}", mem::size_of::<MsgExecveEvent>());
+    info!("MsgExit size: {}", mem::size_of::<MsgExit>());
 }

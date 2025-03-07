@@ -8,3 +8,4 @@ pub mod api {
     tonic::include_proto!("tetragon");
 }
 pub mod ktime;
+pub mod observer;
