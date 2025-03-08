@@ -3,38 +3,12 @@ use core::mem;
 
 use crate::bpf_cred::{MsgCapabilities, MsgCred};
 use crate::common::{MsgCommon, EVENT_SIZE};
-use crate::msg_types::MsgOps;
 use crate::vmlinux::*;
 
 // In Linux, it's 4096, but simplified to 256 for easier debugging.
 pub const BINARY_PATH_MAX_LEN: usize = 256;
 // Usually 2MiB in most kernels, but simplified to 512 for easier debugging.
 pub const ARGS_MAX_LEN: usize = 512;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct ProcessEvent {
-    pub msg_ops: MsgOps,
-    pub uid: u32,
-    pub pid: i32,
-    pub filename: [u8; BINARY_PATH_MAX_LEN],
-    pub filename_len: usize,
-}
-
-impl Default for ProcessEvent {
-    fn default() -> Self {
-        Self {
-            msg_ops: MsgOps::default(),
-            uid: u32::default(),
-            pid: i32::default(),
-            filename: [u8::default(); BINARY_PATH_MAX_LEN],
-            filename_len: usize::default(),
-        }
-    }
-}
-
-#[cfg(feature = "user")]
-unsafe impl aya::Pod for ProcessEvent {}
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
