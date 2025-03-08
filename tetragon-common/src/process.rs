@@ -367,7 +367,7 @@ pub const SENT_FAILED_MAX: usize = 6;
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct KernelStats {
-    sent_failed: [[u64; SENT_FAILED_MAX]; 256],
+    pub sent_failed: [[u64; SENT_FAILED_MAX]; 256],
 }
 
 impl Default for KernelStats {

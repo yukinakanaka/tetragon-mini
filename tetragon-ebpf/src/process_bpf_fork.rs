@@ -1,5 +1,5 @@
-use crate::lib_process::execve_map_get;
-use crate::maps::{CLONE_HEAP_MAP, TCPMON_MAP};
+use crate::lib_process::{execve_map_get, perf_event_output_metric};
+use crate::maps::CLONE_HEAP_MAP;
 use crate::process_bpf_process_event::get_current_subj_caps;
 use crate::process_bpf_task::{event_find_parent, get_task_pid_vnr};
 use aya_ebpf::helpers::bpf_ktime_get_ns;
@@ -133,7 +133,7 @@ unsafe fn try_wake_up_new_task(ctx: ProbeContext) -> Result<u32, i64> {
     msg.nspid = curr.nspid;
     msg.flags = curr.flags;
 
-    TCPMON_MAP.output(&ctx, event_bytes, 0);
+    perf_event_output_metric(&ctx, MsgOps::MsgOpClone, event_bytes, 0);
 
     debug!(
         &ctx,
