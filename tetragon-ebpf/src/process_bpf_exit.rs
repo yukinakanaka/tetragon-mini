@@ -54,7 +54,7 @@ pub unsafe fn event_exit_send(ctx: &ProbeContext, tgid: __u32) -> Result<u32, i6
         let exit_code = bpf_probe_read_kernel(&(*task).exit_code).unwrap_or(1);
         exit.info.code = exit_code.unsigned_abs();
 
-        maps::TCPMON_MAP.output(ctx, event_bytes, 0);
+        lib_process::perf_event_output_metric(ctx, MsgOps::MsgOpExit, event_bytes, 0);
     }
 
     lib_process::execve_map_delete(tgid);

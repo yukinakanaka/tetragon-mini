@@ -1,4 +1,5 @@
 use crate::lib_helper::offset_of;
+use crate::lib_process;
 use crate::maps;
 use crate::process_bpf_process_event::{
     event_set_clone, get_auid, get_current_subj_creds, get_namespaces,
@@ -187,7 +188,7 @@ unsafe fn try_execve_send(ctx: BtfTracePointContext) -> Result<u32, i64> {
         }
     }
 
-    maps::TCPMON_MAP.output(&ctx, event_bytes, 0);
+    lib_process::perf_event_output_metric(&ctx, MsgOps::MsgOpExecve, event_bytes, 0);
 
     Ok(0)
 }
