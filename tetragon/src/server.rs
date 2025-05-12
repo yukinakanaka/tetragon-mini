@@ -147,7 +147,8 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
         &self,
         _request: Request<RuntimeHookRequest>,
     ) -> std::result::Result<Response<RuntimeHookResponse>, Status> {
-        unimplemented!()
+        info!("runtime_hook: {:?}", _request);
+        Ok(Response::new(RuntimeHookResponse {}))
     }
     async fn get_debug(
         &self,
