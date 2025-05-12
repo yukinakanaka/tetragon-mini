@@ -70,7 +70,7 @@ impl CgidMap {
         }
 
         if old_entry.cg_id != new_entry.cg_id {
-            warn!("invalid entry in cgidmap: mismatching cg id, please report this message to Tetragon developers: old cgroup ID {} new cgroup ID {}, countainer ID {}, pod ID {}", old_entry.cg_id, new_entry.cg_id, new_entry.cont_id, new_entry.pod_id);
+            warn!("invalid entry in cgidmap: mismatching cg id, please report this message to Tetragon developers: old cgroup ID {} new cgroup ID {}, container ID {}, pod ID {}", old_entry.cg_id, new_entry.cg_id, new_entry.cont_id, new_entry.pod_id);
             old_entry.cg_id = new_entry.cg_id;
         }
     }
