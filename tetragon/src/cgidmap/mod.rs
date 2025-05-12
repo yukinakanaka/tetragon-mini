@@ -254,7 +254,7 @@ mod tests {
             assert_eq!(map.cont_map.len(), 2);
         }
 
-        // Simulate the removal of container1 and cotnainer2
+        // Simulate the removal of container1 and container2
         let mut cont_ids = HashSet::new();
 
         update(pod_id, &mut cont_ids).await;
