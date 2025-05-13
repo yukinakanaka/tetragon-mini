@@ -11,3 +11,4 @@ pub mod api {
 pub mod ktime;
 pub mod metrics;
 pub mod observer;
+pub mod rthooks;

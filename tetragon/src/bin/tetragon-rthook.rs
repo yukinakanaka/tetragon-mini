@@ -1,6 +1,4 @@
 // TODO: Support all options defined in Tetragon: https://github.com/cilium/tetragon/tree/41b2405f3689ea0179af30f29a048ca3a3c55566/contrib/tetragon-rthooks
-use std::collections::HashMap;
-
 use tetragon::api::fine_guidance_sensors_client::FineGuidanceSensorsClient;
 use tetragon::api::runtime_hook_request::Event;
 use tetragon::api::{CreateContainer, RuntimeHookRequest};
