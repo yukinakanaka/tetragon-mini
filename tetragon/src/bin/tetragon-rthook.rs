@@ -51,6 +51,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 cgroups_path: "cgroups_path".to_string(),
                 root_dir: "root_dir".to_string(),
                 container_name: "container_name".to_string(),
+                container_id: "container_id".to_string(),
+                pod_name: "pod_name".to_string(),
+                pod_uid: "pod_uid".to_string(),
+                pod_namespace: "pod_namespace".to_string(),
                 annotations,
             })),
         }))
