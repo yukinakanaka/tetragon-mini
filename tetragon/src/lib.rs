@@ -1,5 +1,6 @@
 pub mod bpf;
 pub mod cgidmap;
+pub mod cgroups;
 pub mod process;
 pub mod reader;
 pub mod server;
