@@ -3,6 +3,8 @@
 
 syntax = "proto3";
 
+import "google/protobuf/wrappers.proto";
+
 package tetragon;
 
 import "tetragon.proto";
@@ -40,6 +42,10 @@ enum TracingPolicyState {
 	TP_STATE_LOAD_ERROR = 3;
 	// failed during lifetime
 	TP_STATE_ERROR = 4;
+	// in the process of loading
+	TP_STATE_LOADING = 5;
+	// in the process of unloading
+	TP_STATE_UNLOADING = 6;
 }
 
 message TracingPolicyStatus {
@@ -61,6 +67,8 @@ message TracingPolicyStatus {
 	string error = 8;
 	// current state of the tracing policy
 	TracingPolicyState state = 9;
+	// the amount of kernel memory in bytes used by policy's sensors non-shared BPF maps (memlock)
+	uint64 kernel_memory_bytes = 10;
 }
 
 message ListTracingPoliciesResponse {
@@ -121,24 +129,100 @@ message GetVersionResponse{
 	string version = 1;
 }
 
+// For now, we only want to support debug-related config flags to be configurable.
+enum ConfigFlag {
+	CONFIG_FLAG_LOG_LEVEL = 0;
+	CONFIG_FLAG_DUMP_PROCESS_CACHE = 1;
+}
+
+enum LogLevel {
+	LOG_LEVEL_PANIC = 0;
+	LOG_LEVEL_FATAL = 1;
+	LOG_LEVEL_ERROR = 2;
+	LOG_LEVEL_WARN = 3;
+	LOG_LEVEL_INFO = 4;
+	LOG_LEVEL_DEBUG = 5;
+	LOG_LEVEL_TRACE = 6;
+}
+
+message DumpProcessCacheReqArgs {
+	bool skip_zero_refcnt = 1;
+	bool exclude_execve_map_processes = 2;
+}
+
+message ProcessInternal {
+	Process process = 1;
+	string color = 2;
+	google.protobuf.UInt32Value refcnt = 3;
+	// refcnt_ops is a map of operations to refcnt change
+	// keys can be:
+	// - "process++": process increased refcnt (i.e. this process starts)
+	// - "process--": process decreased refcnt (i.e. this process exits)
+	// - "parent++": parent increased refcnt (i.e. a process starts that has this process as a parent)
+	// - "parent--": parent decreased refcnt (i.e. a process exits that has this process as a parent)
+	map<string, int32> refcnt_ops = 4;
+}
+
+message DumpProcessCacheResArgs {
+	repeated ProcessInternal processes = 1;
+}
+
+message GetDebugRequest{
+	ConfigFlag flag = 1;
+	oneof arg {
+		DumpProcessCacheReqArgs dump = 2;
+	}
+}
+message GetDebugResponse{
+	ConfigFlag flag = 1;
+	oneof arg {
+		LogLevel level = 2;
+		DumpProcessCacheResArgs processes = 3;
+	}
+}
+
+message SetDebugRequest{
+	ConfigFlag flag = 1;
+	oneof arg {
+		LogLevel level = 2;
+	}
+}
+message SetDebugResponse{
+	ConfigFlag flag = 1;
+	oneof arg {
+		LogLevel level = 2;
+	}
+}
+
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
 
     rpc AddTracingPolicy(AddTracingPolicyRequest) returns (AddTracingPolicyResponse) {}
     rpc DeleteTracingPolicy(DeleteTracingPolicyRequest) returns (DeleteTracingPolicyResponse) {}
-    rpc RemoveSensor(RemoveSensorRequest) returns (RemoveSensorResponse) {}
     rpc ListTracingPolicies(ListTracingPoliciesRequest) returns (ListTracingPoliciesResponse) {}
     rpc EnableTracingPolicy(EnableTracingPolicyRequest) returns (EnableTracingPolicyResponse) {}
     rpc DisableTracingPolicy(DisableTracingPolicyRequest) returns (DisableTracingPolicyResponse) {}
 
-    rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {}
-    rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}
-    rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {}
+    rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {
+        option deprecated = true;
+    }
+    rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {
+        option deprecated = true;
+    }
+    rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {
+        option deprecated = true;
+    }
+    rpc RemoveSensor(RemoveSensorRequest) returns (RemoveSensorResponse) {
+        option deprecated = true;
+    }
 
     rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
 
     rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
 
     rpc RuntimeHook(RuntimeHookRequest) returns (RuntimeHookResponse) {}
+
+    rpc GetDebug(GetDebugRequest) returns (GetDebugResponse) {}
+    rpc SetDebug(SetDebugRequest) returns (SetDebugResponse) {}
 }

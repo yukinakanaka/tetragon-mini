@@ -3,12 +3,13 @@ use crate::api::{
     AddTracingPolicyRequest, AddTracingPolicyResponse, DeleteTracingPolicyRequest,
     DeleteTracingPolicyResponse, DisableSensorRequest, DisableSensorResponse,
     DisableTracingPolicyRequest, DisableTracingPolicyResponse, EnableSensorRequest,
-    EnableSensorResponse, EnableTracingPolicyRequest, EnableTracingPolicyResponse,
-    GetEventsRequest, GetEventsResponse, GetHealthStatusRequest, GetHealthStatusResponse,
-    GetStackTraceTreeRequest, GetStackTraceTreeResponse, GetVersionRequest, GetVersionResponse,
-    HealthStatus, HealthStatusResult, HealthStatusType, ListSensorsRequest, ListSensorsResponse,
-    ListTracingPoliciesRequest, ListTracingPoliciesResponse, RemoveSensorRequest,
-    RemoveSensorResponse, RuntimeHookRequest, RuntimeHookResponse,
+    EnableSensorResponse, EnableTracingPolicyRequest, EnableTracingPolicyResponse, GetDebugRequest,
+    GetDebugResponse, GetEventsRequest, GetEventsResponse, GetHealthStatusRequest,
+    GetHealthStatusResponse, GetStackTraceTreeRequest, GetStackTraceTreeResponse,
+    GetVersionRequest, GetVersionResponse, HealthStatus, HealthStatusResult, HealthStatusType,
+    ListSensorsRequest, ListSensorsResponse, ListTracingPoliciesRequest,
+    ListTracingPoliciesResponse, RemoveSensorRequest, RemoveSensorResponse, RuntimeHookRequest,
+    RuntimeHookResponse, SetDebugRequest, SetDebugResponse,
 };
 use std::time::SystemTime;
 use tracing::*;
@@ -51,6 +52,7 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
                         time: Some(SystemTime::now().into()),
                         aggregation_info: None,
                         event: Some(event),
+                        cluster_name: "cluster".to_string(),
                     }))
                     .await
                 {
@@ -85,12 +87,6 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
         &self,
         _request: Request<DeleteTracingPolicyRequest>,
     ) -> std::result::Result<Response<DeleteTracingPolicyResponse>, Status> {
-        unimplemented!()
-    }
-    async fn remove_sensor(
-        &self,
-        _request: Request<RemoveSensorRequest>,
-    ) -> std::result::Result<Response<RemoveSensorResponse>, Status> {
         unimplemented!()
     }
     async fn list_tracing_policies(
@@ -129,6 +125,12 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
     ) -> std::result::Result<Response<DisableSensorResponse>, Status> {
         unimplemented!()
     }
+    async fn remove_sensor(
+        &self,
+        _request: Request<RemoveSensorRequest>,
+    ) -> std::result::Result<Response<RemoveSensorResponse>, Status> {
+        unimplemented!()
+    }
     async fn get_stack_trace_tree(
         &self,
         _request: Request<GetStackTraceTreeRequest>,
@@ -145,6 +147,18 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
         &self,
         _request: Request<RuntimeHookRequest>,
     ) -> std::result::Result<Response<RuntimeHookResponse>, Status> {
+        unimplemented!()
+    }
+    async fn get_debug(
+        &self,
+        _request: Request<GetDebugRequest>,
+    ) -> std::result::Result<Response<GetDebugResponse>, Status> {
+        unimplemented!()
+    }
+    async fn set_debug(
+        &self,
+        _request: Request<SetDebugRequest>,
+    ) -> std::result::Result<Response<SetDebugResponse>, Status> {
         unimplemented!()
     }
 }
