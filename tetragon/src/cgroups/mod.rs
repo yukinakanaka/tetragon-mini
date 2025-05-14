@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright Authors of Tetragon
+pub mod linux;
 
 pub const CGROUP_UNSET_VALUE: u64 = 0;
 
@@ -62,8 +61,8 @@ impl std::fmt::Display for DeploymentCode {
 
 pub struct DeploymentEnv {
     id: DeploymentCode,
-    str: String,
-    ends_with: String,
+    str: Option<String>,
+    ends_with: Option<String>,
 }
 
 /// Returns a Rust string from the passed C language format byte array.
