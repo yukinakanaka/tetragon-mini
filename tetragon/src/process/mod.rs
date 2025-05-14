@@ -192,6 +192,7 @@ pub fn init_process_internal_exec(
             binary_properties: None,
             process_credentials: None,
             user: None,
+            in_init_tree: None,
         },
         capabilities: api_caps,
         api_creds,
