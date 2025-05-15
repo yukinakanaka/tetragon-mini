@@ -59,6 +59,7 @@ impl std::fmt::Display for DeploymentCode {
     }
 }
 
+#[allow(dead_code)]
 pub struct DeploymentEnv {
     id: DeploymentCode,
     str: Option<String>,

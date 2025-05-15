@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use super::CgroupModeCode;
 use crate::cgroups::{DeploymentCode, DeploymentEnv};
 use std::fs::File;
@@ -114,7 +115,7 @@ fn _detect_deployment_mode() -> anyhow::Result<DeploymentCode> {
     // find_migration_path(pid)?;
     // Ok(get_deployment_mode())
 
-    return Ok(DeploymentCode::Unknown);
+    Ok(DeploymentCode::Unknown)
 }
 
 pub fn detect_deployment_mode() -> anyhow::Result<DeploymentCode> {
@@ -138,15 +139,12 @@ pub fn detect_deployment_mode() -> anyhow::Result<DeploymentCode> {
 }
 
 pub fn get_deployment_mode() -> DeploymentCode {
-    return DEPLOYMENT_MODE
-        .get()
-        .unwrap_or(&DeploymentCode::Unknown)
-        .clone();
+    *DEPLOYMENT_MODE.get().unwrap_or(&DeploymentCode::Unknown)
 }
 
 pub fn host_cgroup_root() -> Result<String, std::io::Error> {
     // TODO: implement
-    return Ok(DEFAULT_CGROUP_ROOT.to_string());
+    Ok(DEFAULT_CGROUP_ROOT.to_string())
 }
 
 #[repr(C)]

@@ -48,13 +48,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = sensor_client
         .runtime_hook(Request::new(RuntimeHookRequest {
             event: Some(Event::CreateContainer(CreateContainer {
-                cgroups_path: "cgroups_path".to_string(),
+                cgroups_path: "0::/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod7e90425a_c5f4_4fdc_859c_7911cdcb282e.slice/cri-containerd-a8998a9c39b697bb4bdae4d24af0381266b4ec47350b58146ffe8fa523b471c3.scope".to_string(),
                 root_dir: "root_dir".to_string(),
-                container_name: "container_name".to_string(),
-                container_id: "container_id".to_string(),
-                pod_name: "pod_name".to_string(),
-                pod_uid: "pod_uid".to_string(),
-                pod_namespace: "pod_namespace".to_string(),
+                container_name: "nginx_container".to_string(),
+                container_id:
+                    "containerd://a8998a9c39b697bb4bdae4d24af0381266b4ec47350b58146ffe8fa523b471c3"
+                        .to_string(),
+                pod_name: "nginx_pod".to_string(),
+                pod_uid: "7e90425a-c5f4-4fdc-859c-7911cdcb282e".to_string(),
+                pod_namespace: "default".to_string(),
                 annotations,
             })),
         }))

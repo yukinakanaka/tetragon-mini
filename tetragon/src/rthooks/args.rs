@@ -1,8 +1,6 @@
 use crate::api;
 use crate::cgroups;
 use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
 
 const UID_STRING_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -58,18 +56,18 @@ impl CreateContainerArg {
         Ok(cg_id)
     }
 
-    pub fn pod_id(&self) -> Result<String, std::io::Error> {
+    pub fn pod_id(&self) -> String {
         if !self.req.pod_uid.is_empty() {
-            return Ok(self.req.pod_uid.clone());
+            return self.req.pod_uid.clone();
         }
-        Ok(pod_id_from_cgroup_path(&self.req.cgroups_path))
+        pod_id_from_cgroup_path(&self.req.cgroups_path)
     }
 
-    pub fn container_id(&self) -> Result<String, std::io::Error> {
+    pub fn container_id(&self) -> String {
         if !self.req.container_id.is_empty() {
-            return Ok(self.req.container_id.clone());
+            return self.req.container_id.clone();
         }
-        Ok(container_id_from_cgroup_path(&self.req.cgroups_path))
+        container_id_from_cgroup_path(&self.req.cgroups_path)
     }
 
     pub fn pod(&mut self) -> Result<&k8s_openapi::api::core::v1::Pod, std::io::Error> {
@@ -163,25 +161,25 @@ fn container_id_from_cgroup_path(p: &str) -> String {
     container_id
 }
 
-fn retry<R, F, E>(n_retries: usize, timeout: Duration, mut f: F) -> Result<R, E>
-where
-    F: FnMut() -> Result<R, E>,
-    E: std::fmt::Display,
-{
-    let mut last_err: Option<E> = None;
+// fn retry<R, F, E>(n_retries: usize, timeout: Duration, mut f: F) -> Result<R, E>
+// where
+//     F: FnMut() -> Result<R, E>,
+//     E: std::fmt::Display,
+// {
+//     let mut last_err: Option<E> = None;
 
-    for i in 0..=n_retries {
-        match f() {
-            Ok(val) => return Ok(val),
-            Err(e) => {
-                last_err = Some(e);
+//     for i in 0..=n_retries {
+//         match f() {
+//             Ok(val) => return Ok(val),
+//             Err(e) => {
+//                 last_err = Some(e);
 
-                if i < n_retries {
-                    sleep(timeout);
-                }
-            }
-        }
-    }
+//                 if i < n_retries {
+//                     sleep(timeout);
+//                 }
+//             }
+//         }
+//     }
 
-    Err(last_err.unwrap())
-}
+//     Err(last_err.unwrap())
+// }

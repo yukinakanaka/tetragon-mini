@@ -7,6 +7,7 @@ use tetragon::bpf::{
 use tetragon::metrics::*;
 use tetragon::observer::run_events;
 use tetragon::process::{print_struct_size, procfs::initial_execve_map_valuses};
+use tetragon::rthooks;
 use tetragon::server::FineGuidanceSensorsService;
 use tetragon::util::{shutdown_signals, stop_signal};
 use tracing::*;
@@ -15,6 +16,8 @@ use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 async fn app_main() -> anyhow::Result<()> {
     let meter_provider = init_metrics();
     let trace_provider = init_traces();
+
+    rthooks::init_runner();
 
     let (stop_tx, _stop_rx) = tokio::sync::broadcast::channel::<()>(1);
     let (event_tx, event_rx) = tokio::sync::broadcast::channel::<Event>(1);
