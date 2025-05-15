@@ -17,14 +17,16 @@ pub enum RtHookError {
     #[error("callback registration failed: {0}")]
     RegistrationError(String),
 
+    #[error("some hooks failed: {0}")]
+    RunHooksError(String),
+
     #[error(transparent)]
     Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }
 
 // TODO: refactor using trait or builder pattern
 pub struct Callbacks {
-    pub create_container:
-        Option<Box<dyn Fn(&RuntimeHookRequest) -> Result<(), RtHookError> + Send + Sync>>,
+    pub create_container: Box<dyn Fn(&RuntimeHookRequest) -> Result<(), RtHookError> + Send + Sync>,
 }
 
 pub fn register_callbacks_at_init(callbacks: Callbacks) {

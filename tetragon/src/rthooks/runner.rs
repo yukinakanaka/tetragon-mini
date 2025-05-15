@@ -20,11 +20,21 @@ impl Runner {
 
     // TODO: call callbacks asynchronously
     pub fn run_hooks(&self, request: &RuntimeHookRequest) -> Result<(), RtHookError> {
-        for callback in &self.callbacks {
-            if let Some(create_container) = &callback.create_container {
-                create_container(request)?;
-            }
+        let errors: Vec<String> = self
+            .callbacks
+            .iter()
+            .filter_map(|callback| {
+                let create_container = &callback.create_container;
+                create_container(request)
+                    .err()
+                    .map(|e| format!("create_container callback failed: {}", e))
+            })
+            .collect();
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(RtHookError::RunHooksError(errors.join("; ")))
         }
-        Ok(())
     }
 }
