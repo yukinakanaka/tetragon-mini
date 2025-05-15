@@ -48,7 +48,7 @@ path = "src/bin/tetra.rs"
 
 [[bin]]
 name = "tetragon-rthooks"
-path = "src/bin/tetragon-rthook.rs"
+path = "src/bin/tetragon-rthooks.rs"
 
 [build-dependencies]
 tonic-build = "0.11.0"
