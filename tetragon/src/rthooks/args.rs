@@ -1,6 +1,7 @@
 use crate::api;
 use crate::cgroups;
 use std::path::Path;
+use tracing::*;
 
 const UID_STRING_LEN: usize = "00000000-0000-0000-0000-000000000000".len();
 
@@ -36,6 +37,7 @@ impl CreateContainerArg {
                 .to_string_lossy()
                 .into_owned();
         }
+        info!("host cgroup path: {}", self.host_cgroup_path);
         Ok(self.host_cgroup_path.clone())
     }
 
@@ -53,6 +55,7 @@ impl CreateContainerArg {
         let cg_id = cgroups::linux::get_cgroup_id_from_sub_cgroup(&path)?;
 
         self.cgroup_id = Some(cg_id);
+        info!("cgroup id: {}", cg_id);
         Ok(cg_id)
     }
 
@@ -183,3 +186,56 @@ fn container_id_from_cgroup_path(p: &str) -> String {
 
 //     Err(last_err.unwrap())
 // }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pod_id_from_cgroup_path() {
+        let test_cases = vec![
+            (
+                "/kubepods/besteffort/pod05e102bf-8744-4942-a241-9b6f07983a53/f52a212505a606972cf8614c3cb856539e71b77ecae33436c5ac442232fbacf8",
+                "05e102bf-8744-4942-a241-9b6f07983a53",
+            ),
+            (
+                "/kubepods/besteffort/pod897277d4-5e6f-4999-a976-b8340e8d075e/crio-a4d6b686848a610472a2eed3ae20d4d64b6b4819feb9fdfc7fd7854deaf59ef3",
+                "897277d4-5e6f-4999-a976-b8340e8d075e",
+            ),
+            (
+                "/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod4c9f1974_5c46_44c2_b42f_3bbf0e98eef9.slice/cri-containerd-bacb920470900725e0aa7d914fee5eb0854315448b024b6b8420ad8429c607ba.scope",
+                "4c9f1974_5c46_44c2_b42f_3bbf0e98eef9",
+            ),
+        ];
+
+        for (path, expected_id) in test_cases {
+            assert_eq!(pod_id_from_cgroup_path(path), expected_id);
+        }
+    }
+
+    #[test]
+    fn test_container_id_from_cgroup_path() {
+        let test_cases = vec![
+            (
+                "/kubepods/besteffort/pod05e102bf-8744-4942-a241-9b6f07983a53/f52a212505a606972cf8614c3cb856539e71b77ecae33436c5ac442232fbacf8",
+                "f52a212505a606972cf8614c3cb856539e71b77ecae33436c5ac442232fbacf8",
+            ),
+            (
+                "/kubepods/besteffort/pod897277d4-5e6f-4999-a976-b8340e8d075e/crio-a4d6b686848a610472a2eed3ae20d4d64b6b4819feb9fdfc7fd7854deaf59ef3",
+                "a4d6b686848a610472a2eed3ae20d4d64b6b4819feb9fdfc7fd7854deaf59ef3",
+            ),
+            (
+                "/kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod4c9f1974_5c46_44c2_b42f_3bbf0e98eef9.slice/cri-containerd-bacb920470900725e0aa7d914fee5eb0854315448b024b6b8420ad8429c607ba.scope",
+                "bacb920470900725e0aa7d914fee5eb0854315448b024b6b8420ad8429c607ba",
+            ),
+            (
+                "kubepods-besteffort.slice/kubepods-besteffort-pod3b673e1d_289e_4210_8ceb_5a253b48d390.slice/cri-containerd-5da35096936fefa0c7a7280a439fb8c680568820a20d410c7b9e30955d88a147.scope",
+                "5da35096936fefa0c7a7280a439fb8c680568820a20d410c7b9e30955d88a147",
+            ),
+        ];
+
+        for (path, expected_id) in test_cases {
+            assert_eq!(container_id_from_cgroup_path(path), expected_id);
+        }
+    }
+}

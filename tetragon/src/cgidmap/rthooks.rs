@@ -12,7 +12,7 @@ pub fn register_callback() {
 }
 
 fn create_container_hook(arg: &mut CreateContainerArg) -> Result<(), RtHookError> {
-    info!("cgidmap::create_container_hook called");
+    debug!("cgidmap::create_container_hook called");
     // TODO: support option
     // if !option::Config::enable_cg_idmap() {
     //     return Ok(());
@@ -33,19 +33,16 @@ fn create_container_hook(arg: &mut CreateContainerArg) -> Result<(), RtHookError
 
     let container_id = arg.container_id();
 
-    let cg_id = 9999;
-
-    // TODO: Test on k8s
-    // let cg_id = match arg.cgroup_id() {
-    //     Ok(id) => id,
-    //     Err(e) => {
-    //         warn!("failed to retrieve cgroup id, aborting hook: {}", e);
-    //         return Err(RtHookError::CreateContainerError(format!(
-    //             "failed to retrieve cgroup id: {}",
-    //             e
-    //         )));
-    //     }
-    // };
+    let cg_id = match arg.cgroup_id() {
+        Ok(id) => id,
+        Err(e) => {
+            warn!("failed to retrieve cgroup id, aborting hook: {}", e);
+            return Err(RtHookError::CreateContainerError(format!(
+                "failed to retrieve cgroup id: {}",
+                e
+            )));
+        }
+    };
 
     // TODO: cgtracker
     // match arg.host_cgroup_path() {
