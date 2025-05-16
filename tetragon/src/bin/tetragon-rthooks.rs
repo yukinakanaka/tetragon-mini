@@ -48,14 +48,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = sensor_client
         .runtime_hook(Request::new(RuntimeHookRequest {
             event: Some(Event::CreateContainer(CreateContainer {
-                cgroups_path: "0::/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-besteffort.slice/kubelet-kubepods-besteffort-pod7e90425a_c5f4_4fdc_859c_7911cdcb282e.slice/cri-containerd-a8998a9c39b697bb4bdae4d24af0381266b4ec47350b58146ffe8fa523b471c3.scope".to_string(),
+                cgroups_path: "kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod3b673e1d_289e_4210_8ceb_5a253b48d390.slice/cri-containerd-5da35096936fefa0c7a7280a439fb8c680568820a20d410c7b9e30955d88a147.scope".to_string(),
                 root_dir: "root_dir".to_string(),
                 container_name: "nginx_container".to_string(),
-                container_id:
-                    "containerd://a8998a9c39b697bb4bdae4d24af0381266b4ec47350b58146ffe8fa523b471c3"
-                        .to_string(),
-                pod_name: "nginx_pod".to_string(),
-                pod_uid: "7e90425a-c5f4-4fdc-859c-7911cdcb282e".to_string(),
+                container_id: "".to_string(),
+                pod_name: "nginx-pod".to_string(),
+                pod_uid: "3b673e1d-289e-4210-8ceb-5a253b48d390".to_string(),
                 pod_namespace: "default".to_string(),
                 annotations,
             })),

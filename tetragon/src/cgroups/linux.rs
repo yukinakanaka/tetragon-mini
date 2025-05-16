@@ -8,7 +8,7 @@ use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
 use std::sync::{LazyLock, OnceLock};
-use tracing::{info, warn};
+use tracing::*;
 
 #[derive(Debug, Clone)]
 pub struct CgroupController {
@@ -153,6 +153,7 @@ struct FileHandle {
 }
 
 fn get_cgroup_id_from_path(cgroup_path: &str) -> Result<u64, Error> {
+    debug!("get_cgroup_id_from_path: {}", cgroup_path);
     let path = Path::new(cgroup_path);
     let file = File::open(path)?;
 
@@ -189,6 +190,7 @@ fn get_cgroup_id_from_path(cgroup_path: &str) -> Result<u64, Error> {
 /// This function deals with this by checking for a child directory. If it finds one (and only one)
 /// it uses the cgroup id from the child.
 pub fn get_cgroup_id_from_sub_cgroup(p: &str) -> Result<u64, std::io::Error> {
+    debug!("get_cgroup_id_from_sub_cgroup: {}", p);
     let get_single_dir_child = || -> Option<String> {
         let entries = match std::fs::read_dir(p) {
             Ok(entries) => entries,
