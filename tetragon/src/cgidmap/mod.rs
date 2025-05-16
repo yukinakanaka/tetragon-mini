@@ -107,7 +107,7 @@ pub fn get(cg_id: CgroupID) -> Option<ContainerID> {
 }
 
 // Update updates the cgid map for the container ids of a given pod
-pub async fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
+pub fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
     let mut remove_cg = Vec::new();
     let mut remove_cont = Vec::new();
     let mut invalid_count = 0;
@@ -166,7 +166,7 @@ pub async fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
 mod tests {
     use super::*;
 
-    async fn teardown() {
+    fn teardown() {
         let mut map = CGID_MAP.lock().unwrap();
         map.entries.clear();
         map.cg_map.clear();
@@ -174,8 +174,8 @@ mod tests {
         map.invalid_cnt = 0;
     }
 
-    #[tokio::test]
-    async fn test_add() {
+    #[test]
+    fn test_add() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d1").unwrap();
         let cont_id = "container001".to_string();
         let cg_id = 123450001;
@@ -193,8 +193,8 @@ mod tests {
         teardown();
     }
 
-    #[tokio::test]
-    async fn test_get() {
+    #[test]
+    fn test_get() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d2").unwrap();
         let cont_id = "container002".to_string();
         let cg_id = 123450002;
@@ -207,8 +207,8 @@ mod tests {
         teardown();
     }
 
-    #[tokio::test]
-    async fn test_update_partialy_container_remove() {
+    #[test]
+    fn test_update_partialy_container_remove() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d3").unwrap();
         let cont_id1 = "container003-1".to_string();
         let cg_id1 = 123450003;
@@ -241,8 +241,8 @@ mod tests {
         teardown();
     }
 
-    #[tokio::test]
-    async fn test_update_all_container_remove() {
+    #[test]
+    fn test_update_all_container_remove() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d4").unwrap();
         let cont_id1: String = "container004-1".to_string();
         let cg_id1 = 123450004;
