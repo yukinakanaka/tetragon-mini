@@ -1,0 +1,337 @@
+# Change cpu/memory if required
+cpus: 8
+memory: "16GiB"
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+
+# macOS Virtualization.Framework(vz) is faster than QUEM: https://lima-vm.io/docs/config/vmtype/
+vmType: "vz"
+mountType: "virtiofs"
+
+mounts:
+  - location: "~"
+    writable: true
+  - location: "/tmp/lima"
+    writable: true
+
+containerd:
+  system: true
+  user: false
+
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail    
+      curl -sL https://apt.llvm.org/llvm.sh | bash -s -- 19 all
+      apt update
+      apt install -y pkg-config libssl-dev
+      apt install -y libzstd-dev
+
+      LLVMFILES=/usr/bin/llvm-*
+      CLANGFILES=/usr/bin/clang-*
+      LLC=/usr/bin/llc-*
+      OPT=/usr/bin/opt-*
+      for f in $LLVMFILES $CLANGFILES $LLC $OPT
+      do
+        link=${f::-3}
+        echo "linking" $f "to" $link
+        ln -s $f $link
+      done
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      apt update
+      apt install -y apt-transport-https ca-certificates curl jq
+      apt install -y linux-tools-common linux-tools-$(uname -r)
+      apt install -y libelf-dev libcap-dev libpcap-dev libbfd-dev binutils-dev build-essential make
+      apt install -y bpfcc-tools
+      apt install -y python3-pip
+      sysctl -w kernel.bpf_stats_enabled=1
+      snap install yq
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      apt install -y ubuntu-dbgsym-keyring
+      echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
+      deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
+      deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
+      tee -a /etc/apt/sources.list.d/ddebs.list
+      apt install ubuntu-dbgsym-keyring
+      apt update
+      apt install -y bpftrace-dbgsym
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      apt install -y libbpf-dev
+      ln -sf /usr/include/$(uname -m)-linux-gnu/asm /usr/include/asm
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      ln -sf /usr/lib/$(uname -m)-linux-gnu/libbfd.so /usr/lib/libbfd.so
+
+      git clone --recurse-submodules https://github.com/libbpf/bpftool.git
+      cd bpftool
+      git submodule update --init
+      cd src
+      make install
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      apt install -y protobuf-compiler libprotobuf-dev
+      curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v1.9.1/grpcurl_1.9.1_linux_arm64.tar.gz" | tar -xz -C /usr/local/bin
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      curl -fLJ https://github.com/Netflix/bpftop/releases/latest/download/bpftop-aarch64-unknown-linux-gnu -o bpftop && chmod +x bpftop
+      mv bpftop /usr/bin/bpftop
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      # https://aya-rs.dev/book/start/development/
+      set -eux -o pipefail
+      rustup install stable
+      rustup toolchain add nightly-2024-11-01
+      rustup toolchain install nightly-2024-11-01 --component rust-src
+      cargo install cargo-generate
+      cargo install --no-default-features bpf-linker@0.9.13
+      cargo install bindgen-cli
+      cargo install --git https://github.com/aya-rs/aya -- aya-tool
+
+  # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      command -v kubeadm >/dev/null 2>&1 && exit 0
+      # Install and configure prerequisites
+      cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+      overlay
+      br_netfilter
+      EOF
+      modprobe overlay
+      modprobe br_netfilter
+      cat <<EOF | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.ipv4.ip_forward                 = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      EOF
+      sysctl --system
+      # Installing kubeadm, kubelet and kubectl
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y apt-transport-https ca-certificates curl
+      VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | sed -e 's/v//' | cut -d'.' -f1-2)
+      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${VERSION}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v${VERSION}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      apt-get update
+      # cri-tools
+      apt-get install -y cri-tools
+      cat  <<EOF | sudo tee /etc/crictl.yaml
+      runtime-endpoint: unix:///run/containerd/containerd.sock
+      EOF
+      # cni-plugins
+      apt-get install -y kubernetes-cni
+      rm -f /etc/cni/net.d/*.conf*
+      apt-get install -y kubelet kubeadm kubectl && apt-mark hold kubelet kubeadm kubectl
+      systemctl enable --now kubelet
+  # See <https://kubernetes.io/docs/setup/production-environment/container-runtimes/>
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      grep SystemdCgroup /etc/containerd/config.toml && exit 0
+      grep "version = 2" /etc/containerd/config.toml || exit 1
+      # Configuring the systemd cgroup driver
+      # Overriding the sandbox (pause) image
+      cat <<EOF >>/etc/containerd/config.toml
+        [plugins]
+          [plugins."io.containerd.grpc.v1.cri"]
+            sandbox_image = "$(kubeadm config images list | grep pause | sort -r | head -n1)"
+            [plugins."io.containerd.grpc.v1.cri".containerd]
+              [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+                [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+                  runtime_type = "io.containerd.runc.v2"
+                  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+                    SystemdCgroup = true
+      EOF
+      systemctl restart containerd
+  # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/>
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      test -e /etc/kubernetes/admin.conf && exit 0
+      export KUBECONFIG=/etc/kubernetes/admin.conf
+      systemctl stop kubelet
+      kubeadm config images list
+      kubeadm config images pull --cri-socket=unix:///run/containerd/containerd.sock
+      systemctl start kubelet
+      # Initializing your control-plane node
+      cat <<EOF >kubeadm-config.yaml
+      kind: InitConfiguration
+      apiVersion: kubeadm.k8s.io/v1beta4
+      nodeRegistration:
+        criSocket: unix:///run/containerd/containerd.sock
+      ---
+      kind: ClusterConfiguration
+      apiVersion: kubeadm.k8s.io/v1beta4
+      apiServer:
+        certSANs: # --apiserver-cert-extra-sans
+        - "127.0.0.1"
+      networking:
+        podSubnet: "10.244.0.0/16" # --pod-network-cidr
+      ---
+      kind: KubeletConfiguration
+      apiVersion: kubelet.config.k8s.io/v1beta1
+      cgroupDriver: systemd
+      EOF
+      kubeadm init --config kubeadm-config.yaml
+      # Installing a Pod network add-on
+      kubectl apply -f https://github.com/flannel-io/flannel/releases/download/v0.26.2/kube-flannel.yml
+      # Control plane node isolation
+      kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+      # Replace the server address with localhost, so that it works also from the host
+      sed -e "/server:/ s|https://.*:\([0-9]*\)$|https://127.0.0.1:\1|" -i $KUBECONFIG
+      mkdir -p ${HOME:-/root}/.kube && cp -f $KUBECONFIG ${HOME:-/root}/.kube/config
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      export KUBECONFIG=/etc/kubernetes/admin.conf
+      mkdir -p {{.Home}}/.kube
+      cp -f $KUBECONFIG {{.Home}}/.kube/config
+      chown -R {{.User}} {{.Home}}/.kube
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      apt install bash-completion
+      kubectl completion bash > /etc/bash_completion.d/kubectl
+      chmod a+r /etc/bash_completion.d/kubectl
+
+  - mode: user
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      echo 'alias k=kubectl' >>~/.bashrc
+      echo 'complete -o default -F __start_kubectl k' >>~/.bashrc
+
+  - mode: system
+    script: |
+      #!/bin/bash
+      curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+      apt update
+      apt install -y helm
+
+probes:
+  - description: "bpftool to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v bpftool >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "bpftool is not installed yet"
+        exit 1
+      fi
+    hint: See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "kubectl to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kubectl >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kubectl is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "helm to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v helm >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "helm is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log". in the guest
+
+  - description: "aya-tool to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      sudo su - $USER
+      if ! timeout 30s bash -c "until command -v aya-tool >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "aya-tool is not installed yet"
+        exit 1
+      fi
+
+  - description: "kubeadm to be installed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "until command -v kubeadm >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kubeadm is not installed yet"
+        exit 1
+      fi
+    hint: |
+      See "/var/log/cloud-init-output.log" in the guest
+  
+  - description: "kubernetes images to be pulled"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 30s bash -c "images=\"$(kubeadm config images list)\"; until for image in \$images; do sudo crictl image -q \$image | grep -q sha256; done; do sleep 3; done"; then
+        echo >&2 "k8s images are not pulled yet"
+        exit 1
+      fi
+  
+  - description: "kubeadm to be completed"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 300s bash -c "until test -f /etc/kubernetes/admin.conf; do sleep 3; done"; then
+        echo >&2 "k8s is not running yet"
+        exit 1
+      fi
+    hint: |
+      The k8s kubeconfig file has not yet been created.
+  
+  - description: "kubernetes cluster to be running"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      if ! timeout 300s bash -c "until kubectl version >/dev/null 2>&1; do sleep 3; done"; then
+        echo >&2 "kubernetes cluster is not up and running yet"
+        exit 1
+      fi
+  
+  - description: "coredns deployment to be running"
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      kubectl wait -n kube-system --timeout=180s --for=condition=available deploy coredns
