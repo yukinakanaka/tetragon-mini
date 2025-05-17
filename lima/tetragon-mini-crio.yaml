@@ -18,7 +18,7 @@ mounts:
     writable: true
 
 containerd:
-  system: true
+  system: false
   user: false
 
 provision:
@@ -119,14 +119,35 @@ provision:
       cargo install bindgen-cli
       cargo install --git https://github.com/aya-rs/aya -- aya-tool
 
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+      CRIO_VERSION=1.33
+
+      apt-get update
+      apt-get install -y software-properties-common curl
+      # Install CRI-O
+      curl -fsSL https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v$CRIO_VERSION/deb/Release.key |
+          gpg --dearmor -o /etc/apt/keyrings/cri-o-apt-keyring.gpg
+
+      echo "deb [signed-by=/etc/apt/keyrings/cri-o-apt-keyring.gpg] https://download.opensuse.org/repositories/isv:/cri-o:/stable:/v$CRIO_VERSION/deb/ /" |
+          tee /etc/apt/sources.list.d/cri-o.list
+
+      apt-get update
+      apt-get install -y cri-o
+      systemctl enable --now crio
+
   # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
   - mode: system
     script: |
       #!/bin/bash
       set -eux -o pipefail
+      KUBERNETES_VERSION=1.33
+
       command -v kubeadm >/dev/null 2>&1 && exit 0
       # Install and configure prerequisites
-      cat <<EOF | sudo tee /etc/modules-load.d/containerd.conf
+      cat <<EOF | sudo tee /etc/modules-load.d/crio.conf
       overlay
       br_netfilter
       EOF
@@ -142,41 +163,20 @@ provision:
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
       apt-get install -y apt-transport-https ca-certificates curl
-      VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt | sed -e 's/v//' | cut -d'.' -f1-2)
-      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${VERSION}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-      curl -fsSL https://pkgs.k8s.io/core:/stable:/v${VERSION}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v${KUBERNETES_VERSION}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
       apt-get update
       # cri-tools
       apt-get install -y cri-tools
       cat  <<EOF | sudo tee /etc/crictl.yaml
-      runtime-endpoint: unix:///run/containerd/containerd.sock
+      runtime-endpoint: unix:///var/run/crio/crio.sock
       EOF
       # cni-plugins
       apt-get install -y kubernetes-cni
       rm -f /etc/cni/net.d/*.conf*
       apt-get install -y kubelet kubeadm kubectl && apt-mark hold kubelet kubeadm kubectl
       systemctl enable --now kubelet
-  # See <https://kubernetes.io/docs/setup/production-environment/container-runtimes/>
-  - mode: system
-    script: |
-      #!/bin/bash
-      set -eux -o pipefail
-      grep SystemdCgroup /etc/containerd/config.toml && exit 0
-      grep "version = 2" /etc/containerd/config.toml || exit 1
-      # Configuring the systemd cgroup driver
-      # Overriding the sandbox (pause) image
-      cat <<EOF >>/etc/containerd/config.toml
-        [plugins]
-          [plugins."io.containerd.grpc.v1.cri"]
-            sandbox_image = "$(kubeadm config images list | grep pause | sort -r | head -n1)"
-            [plugins."io.containerd.grpc.v1.cri".containerd]
-              [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
-                [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
-                  runtime_type = "io.containerd.runc.v2"
-                  [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
-                    SystemdCgroup = true
-      EOF
-      systemctl restart containerd
+
   # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/>
   - mode: system
     script: |
@@ -186,14 +186,14 @@ provision:
       export KUBECONFIG=/etc/kubernetes/admin.conf
       systemctl stop kubelet
       kubeadm config images list
-      kubeadm config images pull --cri-socket=unix:///run/containerd/containerd.sock
+      kubeadm config images pull --cri-socket=unix:///var/run/crio/crio.sock
       systemctl start kubelet
       # Initializing your control-plane node
       cat <<EOF >kubeadm-config.yaml
       kind: InitConfiguration
       apiVersion: kubeadm.k8s.io/v1beta4
       nodeRegistration:
-        criSocket: unix:///run/containerd/containerd.sock
+        criSocket: unix:///var/run/crio/crio.sock
       ---
       kind: ClusterConfiguration
       apiVersion: kubeadm.k8s.io/v1beta4
