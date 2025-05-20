@@ -80,7 +80,8 @@ kubectl create secret docker-registry my-docker-secret \
 
 Run pod with imagePullSecret
 ```
-kubectl run test-nginx \
+POD_NAME=test1
+kubectl run ${POD_NAME} \
   --image=docker.io/library/nginx:latest \
   --image-pull-policy=Always \
   --overrides='

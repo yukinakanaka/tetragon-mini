@@ -190,7 +190,7 @@ fn get_cgroup_id_from_path(cgroup_path: &str) -> Result<u64, Error> {
 /// This function deals with this by checking for a child directory. If it finds one (and only one)
 /// it uses the cgroup id from the child.
 pub fn get_cgroup_id_from_sub_cgroup(p: &str) -> Result<u64, std::io::Error> {
-    debug!("get_cgroup_id_from_sub_cgroup: {}", p);
+    debug!("get_cgroup_id_from_sub_cgroup: arg: {}", p);
     let get_single_dir_child = || -> Option<String> {
         let entries = match std::fs::read_dir(p) {
             Ok(entries) => entries,
@@ -232,6 +232,6 @@ pub fn get_cgroup_id_from_sub_cgroup(p: &str) -> Result<u64, std::io::Error> {
         Some(child) => format!("{}/{}", p, child),
         None => p.to_string(),
     };
-
+    debug!("get_cgroup_id_from_sub_cgroup: res: {}", path);
     get_cgroup_id_from_path(&path)
 }

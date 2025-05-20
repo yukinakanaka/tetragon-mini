@@ -29,8 +29,9 @@ log "Start $0 with args: $*"
 # Read container context from stdin
 read -r context
 log "Received context: $context"
+echo "$context" > /opt/oci-hook/context.json
 
-Process container information
+# Process container information
 
 # Extract values from context
 ROOT_DIR=$(echo "$context" | jq -r '.root')
@@ -42,8 +43,9 @@ POD_NAMESPACE=$(echo ${context} | jq -r '.annotations."io.kubernetes.pod.namespa
 ANNOTATIONS=$(echo "$context" | jq -r '.annotations')
 
 # Get and parse cgroup path
-# BUNDLE=$(echo "$context" | jq -r '.bundle')
-RUN_CONFIG="$(pwd)/config.json"
+BUNDLE=$(echo "$context" | jq -r '.bundle')
+RUN_CONFIG="${BUNDLE}/config.json"
+# RUN_CONFIG="$(pwd)/config.json"
 if [[ ! -f "$RUN_CONFIG" ]]; then
     log "Error: Config file not found: $RUN_CONFIG"
     exit 1
