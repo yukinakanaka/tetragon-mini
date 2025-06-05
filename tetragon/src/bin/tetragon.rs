@@ -4,9 +4,10 @@ use tetragon::bpf::{
     init_ebpf,
     maps::{get_process_events_map, write_execve_map},
 };
-use tetragon::k8s::util::extract_container_ids_from_event;
+use tetragon::cgidmap;
 use tetragon::metrics::*;
 use tetragon::observer::run_events;
+use tetragon::podhelpers::extract_container_ids_from_event;
 use tetragon::process::{print_struct_size, procfs::initial_execve_map_valuses};
 use tetragon::rthooks;
 use tetragon::server::FineGuidanceSensorsService;
@@ -42,17 +43,17 @@ async fn app_main() -> anyhow::Result<()> {
 
     let (store, informer) = watcher::pod_informer();
 
-    let mut event_receiver = informer.subscribe();
+    let mut pod_event = informer.subscribe();
     let store_clone = store.clone();
     let subscriber_sample = tokio::spawn(async move {
-        while let Ok(event) = event_receiver.recv().await {
+        while let Ok(event) = pod_event.recv().await {
             let Some((running, terminated)) = extract_container_ids_from_event(&event) else {
                 continue;
             };
 
             for id in running.iter() {
                 if let Some(pod) = store_clone.get(id) {
-                    info!(
+                    trace!(
                         "Found pod for container in running_pod {}: {}",
                         id,
                         pod.metadata.name.as_deref().unwrap_or("Unknown")
@@ -61,13 +62,25 @@ async fn app_main() -> anyhow::Result<()> {
             }
             for id in terminated.iter() {
                 if let Some(pod) = store_clone.get(id) {
-                    info!(
+                    trace!(
                         "Found pod for container in terminated {}: {}",
                         id,
                         pod.metadata.name.as_deref().unwrap_or("Unknown")
                     );
                 }
             }
+        }
+    });
+
+    let pod_event = informer.subscribe();
+    let cgidmap_podhooks_thread = tokio::spawn({
+        let stop = stop_signal(stop_tx.subscribe());
+        async move {
+            let result = cgidmap::podhooks::run(pod_event, stop).await;
+            if let Err(e) = &result {
+                error!("CgidMap podhooks error: {:?}", e);
+            }
+            result
         }
     });
 
@@ -110,6 +123,11 @@ async fn app_main() -> anyhow::Result<()> {
             subscriber_sample
                 .map_err(anyhow::Error::new)
                 .map(|r| ("subscriber_sample", r))
+                .boxed(),
+            cgidmap_podhooks_thread
+                .map_err(anyhow::Error::new)
+                .map(flatten)
+                .map(|r| ("informer_thread", r))
                 .boxed(),
         ])
     };

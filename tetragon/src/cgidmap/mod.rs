@@ -1,3 +1,4 @@
+pub mod podhooks;
 pub mod rthooks;
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
@@ -65,6 +66,7 @@ impl CgidMap {
             "cgidmap: added entry: cg_id {}, cont_id {}, pod_id {}",
             entry.cg_id, entry.cont_id, entry.pod_id
         );
+        info!("cgidmap: current entries: {:?}", self.entries);
     }
 
     fn update_entry(&mut self, idx: usize, new_entry: Entry) {
@@ -144,6 +146,12 @@ pub fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
         map.cont_map.remove(&cont_id);
     }
     map.invalid_cnt += invalid_count;
+
+    info!(
+        "cgidmap: updated pod {}: removed {} containers, invalid count is now {}",
+        pod_id, invalid_count, map.invalid_cnt
+    );
+    info!("cgidmap: current entries: {:?}", map.entries.iter());
 
     // if cont_ids.is_empty() {
     //     return;

@@ -13,7 +13,7 @@ use parking_lot::RwLock;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::k8s::util::extract_container_ids;
+use crate::podhelpers::extract_container_ids;
 
 type ContainerID = String;
 type PodCacheInner = Arc<RwLock<AHashMap<ContainerID, Arc<Pod>>>>;
