@@ -4,12 +4,14 @@ use tetragon::bpf::{
     init_ebpf,
     maps::{get_process_events_map, write_execve_map},
 };
+use tetragon::k8s::util::extract_container_ids_from_event;
 use tetragon::metrics::*;
 use tetragon::observer::run_events;
 use tetragon::process::{print_struct_size, procfs::initial_execve_map_valuses};
 use tetragon::rthooks;
 use tetragon::server::FineGuidanceSensorsService;
 use tetragon::util::{shutdown_signals, stop_signal};
+use tetragon::watcher;
 use tracing::*;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
@@ -38,6 +40,48 @@ async fn app_main() -> anyhow::Result<()> {
         async move { server.run(stop).await }
     });
 
+    let (store, informer) = watcher::pod_informer();
+
+    let mut event_receiver = informer.subscribe();
+    let store_clone = store.clone();
+    let subscriber_sample = tokio::spawn(async move {
+        while let Ok(event) = event_receiver.recv().await {
+            let Some((running, terminated)) = extract_container_ids_from_event(&event) else {
+                continue;
+            };
+
+            for id in running.iter() {
+                if let Some(pod) = store_clone.get(id) {
+                    info!(
+                        "Found pod for container in running_pod {}: {}",
+                        id,
+                        pod.metadata.name.as_deref().unwrap_or("Unknown")
+                    );
+                }
+            }
+            for id in terminated.iter() {
+                if let Some(pod) = store_clone.get(id) {
+                    info!(
+                        "Found pod for container in terminated {}: {}",
+                        id,
+                        pod.metadata.name.as_deref().unwrap_or("Unknown")
+                    );
+                }
+            }
+        }
+    });
+
+    let informer_thread = tokio::spawn({
+        let stop = stop_signal(stop_tx.subscribe());
+        async move {
+            let result = informer.run(stop).await;
+            if let Err(e) = &result {
+                error!("Pod informer error: {:?}", e);
+            }
+            result
+        }
+    });
+
     let tasks = {
         fn flatten<V, E>(r: Result<Result<V, E>, E>) -> Result<V, E> {
             match r {
@@ -57,6 +101,15 @@ async fn app_main() -> anyhow::Result<()> {
                 .map_err(anyhow::Error::new)
                 .map(flatten)
                 .map(|r| ("demo_server_thread", r))
+                .boxed(),
+            informer_thread
+                .map_err(anyhow::Error::new)
+                .map(flatten)
+                .map(|r| ("informer_thread", r))
+                .boxed(),
+            subscriber_sample
+                .map_err(anyhow::Error::new)
+                .map(|r| ("subscriber_sample", r))
                 .boxed(),
         ])
     };

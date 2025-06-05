@@ -69,7 +69,6 @@ pub async fn run_events(
                                         ancestors: Vec::new(),
                                     });
                                     let _ = tx.send(event);
-                                    info!("SENT EVENT");
                                 }
                                 Err(e) => {
                                     warn!("Failed add_exec_event: {}", e);

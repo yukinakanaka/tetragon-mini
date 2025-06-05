@@ -9,7 +9,9 @@ pub mod api {
     #![allow(clippy::all)]
     tonic::include_proto!("tetragon");
 }
+pub mod k8s;
 pub mod ktime;
 pub mod metrics;
 pub mod observer;
 pub mod rthooks;
+pub mod watcher;
