@@ -1,6 +1,7 @@
 use crate::api::{get_events_response::Event, ProcessExec, ProcessExit};
 use crate::process;
 use crate::process::cache::cache_get;
+use crate::watcher::PodStore;
 use aya::{
     maps::{perf::AsyncPerfEventArray, MapData},
     util::online_cpus,
@@ -18,6 +19,7 @@ pub async fn run_events(
     mut process_events_map: AsyncPerfEventArray<MapData>,
     tx: tokio::sync::broadcast::Sender<Event>,
     stop: impl std::future::Future<Output = ()>,
+    store: PodStore,
 ) -> anyhow::Result<()> {
     let Ok(cpus) = online_cpus() else {
         return Err(anyhow::anyhow!("Failed get cpu info."));
@@ -28,6 +30,7 @@ pub async fn run_events(
         let mut buf = process_events_map.open(cpu, None)?;
         let tx = tx.clone();
 
+        let store = store.clone();
         tokio::task::spawn(async move {
             let mut buffers = (0..num_cpus)
                 .map(|_| BytesMut::with_capacity(10240))
@@ -61,7 +64,7 @@ pub async fn run_events(
                             };
                             info!("MsgOpExecve: {event:?}");
 
-                            match process::add_exec_event(&mut event).await {
+                            match process::add_exec_event(&mut event, store.clone()).await {
                                 Ok(internal) => {
                                     let event = Event::ProcessExec(ProcessExec {
                                         process: Some(internal.process),
@@ -69,7 +72,6 @@ pub async fn run_events(
                                         ancestors: Vec::new(),
                                     });
                                     let _ = tx.send(event);
-                                    info!("SENT EVENT");
                                 }
                                 Err(e) => {
                                     warn!("Failed add_exec_event: {}", e);
@@ -121,7 +123,7 @@ pub async fn run_events(
                                 }
                             };
                             info!("MsgOpClone: {event:?}");
-                            if let Err(e) = process::add_clone_event(&event).await {
+                            if let Err(e) = process::add_clone_event(&event, store.clone()).await {
                                 info!("Failed add_clone_event: {}", e);
                                 continue;
                             }

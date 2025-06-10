@@ -38,21 +38,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Event::ProcessExec(process_exec) => {
                 debug!("process_exec: {:?}", process_exec);
                 println!(
-                    "🚀 process\t{}: {}: {} {}",
+                    "🚀 process\t{}: {}: {} {} {}/{}",
                     process_exec.process.as_ref().unwrap().pid.unwrap(),
                     translate_uid(process_exec.process.as_ref().unwrap().uid.unwrap()),
                     process_exec.process.as_ref().unwrap().binary,
                     process_exec.process.as_ref().unwrap().arguments,
+                    process_exec
+                        .process
+                        .as_ref()
+                        .and_then(|p| p.pod.as_ref())
+                        .map(|pod| pod.namespace.as_str())
+                        .unwrap_or(""),
+                    process_exec
+                        .process
+                        .as_ref()
+                        .and_then(|p| p.pod.as_ref())
+                        .map(|pod| pod.name.as_str())
+                        .unwrap_or(""),
                 );
             }
             Event::ProcessExit(process_exit) => {
                 debug!("process_exit: {:?}", process_exit);
                 println!(
-                    "💥 exit\t\t{}: {}: {} {}",
+                    "💥 exit\t\t{}: {}: {} {} {}/{}",
                     process_exit.process.as_ref().unwrap().pid.unwrap(),
                     translate_uid(process_exit.process.as_ref().unwrap().uid.unwrap()),
                     process_exit.process.as_ref().unwrap().binary,
                     process_exit.process.as_ref().unwrap().arguments,
+                    process_exit
+                        .process
+                        .as_ref()
+                        .and_then(|p| p.pod.as_ref())
+                        .map(|pod| pod.namespace.as_str())
+                        .unwrap_or(""),
+                    process_exit
+                        .process
+                        .as_ref()
+                        .and_then(|p| p.pod.as_ref())
+                        .map(|pod| pod.name.as_str())
+                        .unwrap_or(""),
                 );
             }
             _ => {

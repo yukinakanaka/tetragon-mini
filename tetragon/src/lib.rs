@@ -1,5 +1,6 @@
 pub mod bpf;
 pub mod cgidmap;
+pub mod cgroups;
 pub mod process;
 pub mod reader;
 pub mod server;
@@ -11,3 +12,6 @@ pub mod api {
 pub mod ktime;
 pub mod metrics;
 pub mod observer;
+pub mod podhelpers;
+pub mod rthooks;
+pub mod watcher;

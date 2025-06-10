@@ -1,3 +1,5 @@
+pub mod podhooks;
+pub mod rthooks;
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 use tracing::*;
@@ -60,6 +62,11 @@ impl CgidMap {
         let idx = self.add_entry_alloc_id(entry.clone());
         self.cg_map.insert(entry.cg_id, idx);
         self.cont_map.insert(entry.cont_id.clone(), idx);
+        info!(
+            "cgidmap: added entry: cg_id {}, cont_id {}, pod_id {}",
+            entry.cg_id, entry.cont_id, entry.pod_id
+        );
+        info!("cgidmap: current entries: {:?}", self.entries);
     }
 
     fn update_entry(&mut self, idx: usize, new_entry: Entry) {
@@ -76,7 +83,7 @@ impl CgidMap {
     }
 }
 
-pub async fn add(pod_id: PodID, cont_id: ContainerID, cg_id: CgroupID) {
+pub fn add(pod_id: PodID, cont_id: ContainerID, cg_id: CgroupID) {
     let entry = Entry {
         cg_id,
         cont_id: cont_id.clone(),
@@ -92,7 +99,7 @@ pub async fn add(pod_id: PodID, cont_id: ContainerID, cg_id: CgroupID) {
     map.add_entry(entry);
 }
 
-pub async fn get(cg_id: CgroupID) -> Option<ContainerID> {
+pub fn get(cg_id: CgroupID) -> Option<ContainerID> {
     let map = CGID_MAP.lock().unwrap();
     if let Some(&idx) = map.cg_map.get(&cg_id) {
         let entry = &map.entries[idx];
@@ -102,7 +109,7 @@ pub async fn get(cg_id: CgroupID) -> Option<ContainerID> {
 }
 
 // Update updates the cgid map for the container ids of a given pod
-pub async fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
+pub fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
     let mut remove_cg = Vec::new();
     let mut remove_cont = Vec::new();
     let mut invalid_count = 0;
@@ -140,6 +147,12 @@ pub async fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
     }
     map.invalid_cnt += invalid_count;
 
+    info!(
+        "cgidmap: updated pod {}: removed {} containers, invalid count is now {}",
+        pod_id, invalid_count, map.invalid_cnt
+    );
+    info!("cgidmap: current entries: {:?}", map.entries.iter());
+
     // if cont_ids.is_empty() {
     //     return;
     // }
@@ -161,7 +174,7 @@ pub async fn update(pod_id: PodID, cont_ids: &mut HashSet<ContainerID>) {
 mod tests {
     use super::*;
 
-    async fn teardown() {
+    fn teardown() {
         let mut map = CGID_MAP.lock().unwrap();
         map.entries.clear();
         map.cg_map.clear();
@@ -169,13 +182,13 @@ mod tests {
         map.invalid_cnt = 0;
     }
 
-    #[tokio::test]
-    async fn test_add() {
+    #[test]
+    fn test_add() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d1").unwrap();
         let cont_id = "container001".to_string();
         let cg_id = 123450001;
 
-        add(pod_id, cont_id.clone(), cg_id).await;
+        add(pod_id, cont_id.clone(), cg_id);
 
         {
             let map = CGID_MAP.lock().unwrap();
@@ -185,33 +198,33 @@ mod tests {
             assert_eq!(entry.cg_id, cg_id);
         }
 
-        teardown().await;
+        teardown();
     }
 
-    #[tokio::test]
-    async fn test_get() {
+    #[test]
+    fn test_get() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d2").unwrap();
         let cont_id = "container002".to_string();
         let cg_id = 123450002;
 
-        add(pod_id, cont_id.clone(), cg_id).await;
+        add(pod_id, cont_id.clone(), cg_id);
 
-        let result = get(cg_id).await;
+        let result = get(cg_id);
         assert_eq!(result, Some(cont_id));
 
-        teardown().await;
+        teardown();
     }
 
-    #[tokio::test]
-    async fn test_update_partialy_container_remove() {
+    #[test]
+    fn test_update_partialy_container_remove() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d3").unwrap();
         let cont_id1 = "container003-1".to_string();
         let cg_id1 = 123450003;
         let cont_id2 = "container003-2".to_string();
         let cg_id2 = 678900003;
 
-        add(pod_id, cont_id1.clone(), cg_id1).await;
-        add(pod_id, cont_id2.clone(), cg_id2).await;
+        add(pod_id, cont_id1.clone(), cg_id1);
+        add(pod_id, cont_id2.clone(), cg_id2);
 
         {
             let map = CGID_MAP.lock().unwrap();
@@ -224,7 +237,7 @@ mod tests {
         let mut cont_ids = HashSet::new();
         cont_ids.insert(cont_id1.clone());
 
-        update(pod_id, &mut cont_ids).await;
+        update(pod_id, &mut cont_ids);
 
         {
             let map = CGID_MAP.lock().unwrap();
@@ -233,19 +246,19 @@ mod tests {
             assert_eq!(map.cont_map.len(), 1);
         }
 
-        teardown().await;
+        teardown();
     }
 
-    #[tokio::test]
-    async fn test_update_all_container_remove() {
+    #[test]
+    fn test_update_all_container_remove() {
         let pod_id = Uuid::parse_str("a1a2a3a4-b1b2-c1c2-d1d2-d3d4d5d6d7d4").unwrap();
-        let cont_id1 = "container004-1".to_string();
+        let cont_id1: String = "container004-1".to_string();
         let cg_id1 = 123450004;
         let cont_id2 = "container004-2".to_string();
         let cg_id2 = 678900004;
 
-        add(pod_id, cont_id1.clone(), cg_id1).await;
-        add(pod_id, cont_id2.clone(), cg_id2).await;
+        add(pod_id, cont_id1.clone(), cg_id1);
+        add(pod_id, cont_id2.clone(), cg_id2);
 
         {
             let map = CGID_MAP.lock().unwrap();
@@ -257,7 +270,7 @@ mod tests {
         // Simulate the removal of container1 and container2
         let mut cont_ids = HashSet::new();
 
-        update(pod_id, &mut cont_ids).await;
+        update(pod_id, &mut cont_ids);
 
         {
             let map = CGID_MAP.lock().unwrap();
@@ -266,6 +279,6 @@ mod tests {
             assert_eq!(map.cg_map.len(), 0);
             assert_eq!(map.cont_map.len(), 0);
         }
-        teardown().await;
+        teardown();
     }
 }

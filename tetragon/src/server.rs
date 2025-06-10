@@ -20,6 +20,7 @@ use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 use crate::api::get_events_response::Event;
+use crate::rthooks;
 
 #[derive(Debug)]
 pub struct FineGuidanceSensorsService {
@@ -145,9 +146,12 @@ impl FineGuidanceSensors for FineGuidanceSensorsService {
     }
     async fn runtime_hook(
         &self,
-        _request: Request<RuntimeHookRequest>,
+        request: Request<RuntimeHookRequest>,
     ) -> std::result::Result<Response<RuntimeHookResponse>, Status> {
-        unimplemented!()
+        info!("runtime_hook: {:?}", request);
+        rthooks::run_hooks(&request.into_inner())
+            .map_err(|e| Status::internal(format!("failed to run hooks: {}", e)))?;
+        Ok(Response::new(RuntimeHookResponse {}))
     }
     async fn get_debug(
         &self,

@@ -2,7 +2,7 @@ use crate::lib_helper::offset_of;
 use crate::lib_process;
 use crate::maps;
 use crate::process_bpf_process_event::{
-    event_set_clone, get_auid, get_current_subj_creds, get_namespaces,
+    __event_get_cgroup_info, event_set_clone, get_auid, get_current_subj_creds, get_namespaces,
 };
 use crate::process_bpf_rate::cgroup_rate;
 use crate::process_bpf_task::{event_find_parent, event_minimal_parent, get_task_pid_vnr};
@@ -95,6 +95,10 @@ unsafe fn try_sched_process_exec(ctx: BtfTracePointContext) -> Result<u32, i64> 
         .map(|s| core::str::from_utf8_unchecked(s))?;
 
     let _ = read_args(task, event);
+
+    __event_get_cgroup_info(task, &mut event.kube);
+
+    // p->flags |= __event_get_cgroup_info(task, &event->kube);
 
     let res = maps::EXECVE_CALLS.tail_call(&ctx, 0);
     if res.is_err() {

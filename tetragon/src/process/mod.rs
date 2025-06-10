@@ -17,6 +17,7 @@ use crate::reader::caps::{
 };
 use crate::reader::namespace::get_msg_namespaces;
 use crate::reader::proc::INVALID_UID;
+use crate::watcher::PodStore;
 use anyhow;
 use base64::{engine::general_purpose, Engine as _};
 use core::mem;
@@ -51,6 +52,7 @@ pub fn init_process_internal_clone(
     event: &MsgCloneEvent,
     mut parent: ProcessInternal,
     parent_exec_id: String,
+    store: PodStore,
 ) -> anyhow::Result<ProcessInternal> {
     parent.process.parent_exec_id = parent_exec_id;
     parent.process.exec_id = get_process_id(event.tgid, event.ktime);
@@ -65,10 +67,19 @@ pub fn init_process_internal_clone(
     parent.process.start_time = Some(to_proto_opt(event.ktime));
     parent.process.refcnt = 1;
 
+    // let pod_info = get_pod_info(
+    //     &parent.process.docker,
+    //     parent.process.binary.as_str(),
+    //     &parent.process.arguments,
+    //     event.nspid,
+    //     store.clone(),
+    // );
+    // parent.process.pod = pod_info;
+
     Ok(parent)
 }
 
-pub async fn add_clone_event(event: &MsgCloneEvent) -> anyhow::Result<()> {
+pub async fn add_clone_event(event: &MsgCloneEvent, store: PodStore) -> anyhow::Result<()> {
     let pid = event.parent.pid;
     let tid = event.tid;
     let parent_exec_id = get_process_id(pid, event.parent.ktime);
@@ -81,7 +92,7 @@ pub async fn add_clone_event(event: &MsgCloneEvent) -> anyhow::Result<()> {
         ));
     };
 
-    let proc = init_process_internal_clone(event, parent, parent_exec_id)?;
+    let proc = init_process_internal_clone(event, parent, parent_exec_id, store.clone())?;
 
     cache_add(proc).await?;
 
@@ -91,10 +102,11 @@ pub async fn add_clone_event(event: &MsgCloneEvent) -> anyhow::Result<()> {
 pub fn init_process_internal_exec(
     event: &mut MsgExecveEvent,
     parent: &MsgExecveKey,
+    store: PodStore,
 ) -> anyhow::Result<ProcessInternal> {
     let mut process = event.process;
     let container_id = std::str::from_utf8(&event.kube.docker_id)
-        .map(|valid_str| valid_str.to_string())
+        .map(|valid_str| valid_str.trim_end_matches('\0').to_string())
         .map_err(|_| anyhow::anyhow!("Error converting container_id to String"))?;
 
     let (args, cwd) = args_decoder(&event.exe.args, process.flags);
@@ -108,7 +120,13 @@ pub fn init_process_internal_exec(
     let creds = event.creds;
     let exec_id = get_exec_id(&process);
 
-    let proto_pod = get_pod_info(&container_id, "filename", &args, process.nspid);
+    let proto_pod = get_pod_info(
+        event.kube.cgrpid,
+        "filename",
+        &args,
+        process.nspid,
+        store.clone(),
+    );
 
     let api_caps = get_msg_capabilities(&event.creds.caps);
 
@@ -182,7 +200,7 @@ pub fn init_process_internal_exec(
             flags: flags.to_string(),
             start_time: Some(to_proto_opt(process.ktime)),
             auid: Some(process.auid),
-            pod: Some(proto_pod),
+            pod: proto_pod,
             exec_id,
             docker: container_id,
             parent_exec_id,
@@ -202,15 +220,18 @@ pub fn init_process_internal_exec(
     })
 }
 
-pub async fn add_exec_event(event: &mut MsgExecveEvent) -> anyhow::Result<ProcessInternal> {
+pub async fn add_exec_event(
+    event: &mut MsgExecveEvent,
+    store: PodStore,
+) -> anyhow::Result<ProcessInternal> {
     let proc: ProcessInternal = if event.cleanup_key.ktime == 0
         || (event.process.flags as u64 & msg_flags::EVENT_CLONE) != 0
     {
         // there is a case where we cannot find this entry in execve_map
         // in that case we use as parent what Linux knows
-        init_process_internal_exec(event, &event.parent.clone())?
+        init_process_internal_exec(event, &event.parent.clone(), store)?
     } else {
-        init_process_internal_exec(event, &event.cleanup_key.clone())?
+        init_process_internal_exec(event, &event.cleanup_key.clone(), store)?
     };
 
     cache_add(proc.clone()).await?;
