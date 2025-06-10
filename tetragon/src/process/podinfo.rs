@@ -11,22 +11,21 @@ pub fn get_pod_info(
     _nspid: u32,
     store: PodStore,
 ) -> Option<Pod> {
-    info!(
+    debug!(
         "get_pod_info: Retrieving pod info for cgroup id: {}",
         cgrpid
     );
 
     let Some(container_id) = cgidmap::get(cgrpid) else {
-        info!(
+        debug!(
             "get_pod_info: No container ID found for cgroup ID: {}",
             cgrpid
         );
         return None;
     };
 
-    // let container_id = extract_hash(container_id)?;
-    let Some(pod) = store.get(&container_id) else {
-        info!(
+    let Some(pod) = store.get_with_retry(&container_id, 20) else {
+        debug!(
             "get_pod_info: No pod found for container ID: {}",
             container_id
         );

@@ -59,8 +59,9 @@ impl PodInformer {
     }
 
     pub async fn run(self, stop: impl std::future::Future<Output = ()>) -> anyhow::Result<()> {
+        info!("Starging PodInformer");
         let client = Client::try_default().await?;
-        let api = Api::<Pod>::default_namespaced(client);
+        let api = Api::<Pod>::all(client);
         let use_watchlist = std::env::var("WATCHLIST")
             .map(|s| s == "1")
             .unwrap_or(false);
@@ -114,12 +115,12 @@ impl PodInformer {
                 let pod = Arc::new(pod.clone());
 
                 let Some((running_ids, terminated_ids)) = extract_container_ids(&pod) else {
-                    tracing::warn!("Pod has no container IDs, skipping: {:?}", pod);
+                    warn!("Pod has no container IDs, skipping: {:?}", pod);
                     return;
                 };
 
                 running_ids.iter().for_each(|id| {
-                    info!("Adding pod to running cache: {:?}", id);
+                    debug!("Adding pod to running cache: {:?}", id);
                     self.running_cache.write().insert(id.clone(), pod.clone());
                 });
 
@@ -132,7 +133,7 @@ impl PodInformer {
                 let pod = Arc::new(pod.clone());
 
                 let Some((running_ids, terminated_ids)) = extract_container_ids(&pod) else {
-                    tracing::warn!("Pod has no container IDs, skipping: {:?}", pod);
+                    warn!("Pod has no container IDs, skipping: {:?}", pod);
                     return;
                 };
 
@@ -153,7 +154,7 @@ impl PodInformer {
                 let pod = Arc::new(pod.clone());
 
                 let Some((running_ids, terminated_ids)) = extract_container_ids(&pod) else {
-                    tracing::warn!("Pod has no container IDs, skipping: {:?}", pod);
+                    warn!("Pod has no container IDs, skipping: {:?}", pod);
                     return;
                 };
 
@@ -190,7 +191,7 @@ impl PodInformer {
                 }
             }
         }
-        info!("running pods: {:?}", self.running_cache.read().keys());
+        debug!("running pods: {:?}", self.running_cache.read().keys());
         debug!("terminated pods: {:?}", self.terminated_cache.read().keys());
     }
 
@@ -206,10 +207,9 @@ impl PodInformer {
                 cache.remove(&key);
             }
 
-            tracing::warn!(
+            warn!(
                 "Terminated cache size exceeded limit ({}). Removed {} entries.",
-                self.terminated_cache_max_size,
-                excess
+                self.terminated_cache_max_size, excess
             );
         }
     }
@@ -279,12 +279,34 @@ impl PodStore {
         Ok(())
     }
 
+    #[must_use]
+    pub fn get_with_retry(&self, container_id: &str, max_retries: usize) -> Option<Arc<Pod>> {
+        let mut attempts = 0;
+
+        loop {
+            if let Some(pod) = self
+                .running
+                .get(container_id)
+                .or_else(|| self.terminated.get(container_id))
+            {
+                return Some(pod);
+            }
+
+            attempts += 1;
+            if attempts >= max_retries {
+                break;
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+
+        None
+    }
+
     /// Get a pod by its container ID from either running or terminated pods
     #[must_use]
     pub fn get(&self, container_id: &str) -> Option<Arc<Pod>> {
-        self.running
-            .get(container_id)
-            .or_else(|| self.terminated.get(container_id))
+        self.get_with_retry(container_id, 1)
     }
 }
 
