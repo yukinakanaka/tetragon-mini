@@ -10,18 +10,11 @@
 
 ## Progress
 ![](https://geps.dev/progress/15)
+
 ### Done
 - Simple Process Lifecycle Monitoring
-
-### TODO
--   Process LifeCycle Monitoring
-    - Support containerd
-    - Cgroup Tracker
--	Tracing Policies
--	Add more Tetra commands and options
--	Support multiple kernel versions
--	Enable running on Docker, Kubernetes
--	And more…
+- Integration with Kubernetes API
+- Integration with CRI-O
 
 ## Process Lifecycle Monitoring
 Tetragon-mini can monitor process lifecycle like bellow:
@@ -34,6 +27,17 @@ Tetragon-mini can monitor process lifecycle like bellow:
 🚀 process      1781740: root: /usr/bin/ls -la default/nginx
 💥 exit         1781740: root: /usr/bin/ls -la default/nginx
 ```
+
+### TODO
+-   Process LifeCycle Monitoring
+    - Support containerd
+    - Cgroup Tracker
+-	Tracing Policies
+-	Add more Tetra commands and options
+-	Support multiple kernel versions
+-	Enable running on Docker, Kubernetes
+-	And more…
+
 
 ## How to run
 ### Prerequisites
