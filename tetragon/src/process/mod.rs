@@ -52,7 +52,7 @@ pub fn init_process_internal_clone(
     event: &MsgCloneEvent,
     mut parent: ProcessInternal,
     parent_exec_id: String,
-    store: PodStore,
+    _store: PodStore,
 ) -> anyhow::Result<ProcessInternal> {
     parent.process.parent_exec_id = parent_exec_id;
     parent.process.exec_id = get_process_id(event.tgid, event.ktime);
