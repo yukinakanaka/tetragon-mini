@@ -5,6 +5,7 @@ use tetragon::bpf::{
     maps::{get_process_events_map, write_execve_map},
 };
 use tetragon::cgidmap;
+use tetragon::config::load_config;
 use tetragon::metrics::*;
 use tetragon::observer::run_events;
 use tetragon::podhelpers::extract_container_ids_from_event;
@@ -16,9 +17,11 @@ use tetragon::watcher;
 use tracing::*;
 use tracing_subscriber::filter::{EnvFilter, LevelFilter};
 
-async fn app_main() -> anyhow::Result<()> {
+async fn app_main(_config: tetragon::config::Config) -> anyhow::Result<()> {
     let meter_provider = init_metrics();
     let trace_provider = init_traces();
+
+    info!("Tetragon starting with configuration: {:#?}", _config);
 
     rthooks::init_runner();
 
@@ -190,16 +193,29 @@ async fn app_main() -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load configuration with proper priority: config files -> env -> CLI args
+    let config = load_config()?;
+
+    // Initialize logging based on configuration
+    let log_level = match config.log_level.to_lowercase().as_str() {
+        "trace" => LevelFilter::TRACE,
+        "debug" => LevelFilter::DEBUG,
+        "info" => LevelFilter::INFO,
+        "warn" => LevelFilter::WARN,
+        "error" => LevelFilter::ERROR,
+        _ => LevelFilter::INFO,
+    };
+
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::builder()
-                .with_default_directive(LevelFilter::DEBUG.into())
+                .with_default_directive(log_level.into())
                 .from_env_lossy(),
         )
         .init();
 
     print_struct_size();
-    app_main().await.map_err(|e| {
+    app_main(config).await.map_err(|e| {
         error!("{e:#}");
         e
     })
