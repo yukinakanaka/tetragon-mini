@@ -3,3 +3,4 @@ xtask = "run --package xtask --"
 
 [env]
 RUST_LOG = "info"
+RUST_TEST_THREADS = "1"
