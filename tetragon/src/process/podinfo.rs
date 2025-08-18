@@ -53,6 +53,7 @@ pub fn get_pod_info(
     })
 }
 
+#[allow(dead_code)]
 fn extract_hash(input: &str) -> Option<String> {
     // TODO: Support containerd
     let re = Regex::new(r"^crio-conmon-([0-9a-fA-F]{64})\.scope$").unwrap();
